@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pig Weigh Station</title>
+<meta name="apple-mobile-web-app-title" content="Pig Weigh Station">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#1B211D;
+    --panel:#232B24;
+    --panel-raised:#2A342B;
+    --hivis:#F5C400;
+    --eartag:#E2622B;
+    --paper:#EDE7DA;
+    --muted:#8A9388;
+    --good:#6FA96B;
+    --line: rgba(237,231,218,0.10);
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:18px 12px 40px;
+  }
+  .app{
+    width:100%;
+    max-width:480px;
+  }
+  .header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    padding:4px 2px 10px;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    color:var(--muted);
+    text-transform:uppercase;
+  }
+  .title{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:26px;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+    margin:2px 0 0;
+  }
+  .tally-badge{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--ink);
+    background:var(--hivis);
+    padding:5px 10px;
+    border-radius:999px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .stripe{
+    height:6px;
+    border-radius:3px;
+    margin:2px 0 18px;
+    background:repeating-linear-gradient(
+      -45deg,
+      var(--hivis) 0px, var(--hivis) 10px,
+      var(--ink) 10px, var(--ink) 20px
+    );
+    opacity:.9;
+  }
+  .panel{
+    background:var(--panel);
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    padding:20px 18px;
+    margin-bottom:14px;
+  }
+  .tag-bar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:14px;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .tag-bar label{white-space:nowrap;}
+  .tag-bar input[type="text"]{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    color:var(--paper);
+    border-radius:8px;
+    padding:7px 9px;
+    width:70px;
+  }
+  .auto-inc-label{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    margin-left:auto;
+    font-size:11px;
+  }
+  .readout-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+  }
+  .readout-box{
+    background:#141917;
+    border:2px solid var(--line);
+    border-radius:12px;
+    padding:18px 14px;
+    width:100%;
+    transition:border-color .25s ease, box-shadow .25s ease;
+  }
+  .readout-box.listening{
+    border-color:var(--hivis);
+    animation:pulseRing 1.6s ease-out infinite;
+  }
+  .readout-box.flash-good{
+    border-color:var(--good);
+    box-shadow:0 0 0 4px rgba(111,169,107,0.25);
+  }
+  .readout-box.flash-review{
+    border-color:var(--eartag);
+    box-shadow:0 0 0 4px rgba(226,98,44,0.25);
+  }
+  @keyframes pulseRing{
+    0%{box-shadow:0 0 0 0 rgba(245,196,0,.45);}
+    100%{box-shadow:0 0 0 18px rgba(245,196,0,0);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .readout-box.listening{animation:none;}
+  }
+  .readout{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    font-size:44px;
+    letter-spacing:.02em;
+    color:var(--paper);
+    line-height:1;
+  }
+  .readout .unit{
+    font-size:18px;
+    color:var(--muted);
+    margin-left:6px;
+  }
+  .heard-line{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    min-height:16px;
+    margin-top:8px;
+    word-break:break-word;
+  }
+  .status-line{
+    font-size:13px;
+    color:var(--muted);
+    text-align:center;
+    margin-top:14px;
+    min-height:18px;
+  }
+  .status-line.warn{color:var(--eartag);}
+  .mic-row{
+    display:flex;
+    justify-content:center;
+    margin-top:16px;
+  }
+  .mic-btn{
+    width:76px;height:76px;
+    border-radius:50%;
+    border:none;
+    background:var(--hivis);
+    color:var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:transform .12s ease, background .2s ease;
+  }
+  .mic-btn:active{transform:scale(.94);}
+  .mic-btn.on{background:var(--eartag); color:var(--paper);}
+  .mic-btn:focus-visible{outline:3px solid var(--paper); outline-offset:3px;}
+  .mode-row{
+    display:flex;
+    gap:8px;
+    margin-top:16px;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+  .mode-btn{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:12px;
+    padding:7px 12px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:transparent;
+    color:var(--muted);
+    cursor:pointer;
+  }
+  .mode-btn.active{
+    background:var(--panel-raised);
+    color:var(--paper);
+    border-color:var(--hivis);
+  }
+  .board-title{
+    font-family:'Oswald', sans-serif;
+    font-size:14px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0 0 12px;
+  }
+  .row{
+    display:grid;
+    grid-template-columns:22px 54px 1fr 58px 26px;
+    align-items:center;
+    gap:6px;
+    padding:9px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .row:last-child{border-bottom:none;}
+  .row .num{
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--muted);
+    font-size:13px;
+  }
+  .row .weight-input{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:16px;
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    color:var(--paper);
+    border-radius:8px;
+    padding:7px 8px;
+    width:100%;
+  }
+  .row.needs-review .weight-input{border-color:var(--eartag);}
+  .row .review-note{
+    grid-column:2 / span 3;
+    font-size:11px;
+    color:var(--eartag);
+    font-style:italic;
+    margin-top:2px;
+  }
+  .row .time{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    text-align:right;
+  }
+  .row .del{
+    background:none;
+    border:none;
+    color:var(--muted);
+    font-size:16px;
+    cursor:pointer;
+    padding:4px;
+  }
+  .row .del:hover{color:var(--eartag);}
+  .empty-note{
+    color:var(--muted);
+    font-size:13px;
+    padding:6px 0;
+  }
+  .stats-bar{
+    display:flex;
+    justify-content:space-between;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--muted);
+    margin:14px 0 16px;
+    padding:0 2px;
+  }
+  .stats-bar b{color:var(--paper);}
+  .actions{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .btn{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    padding:13px 16px;
+    border-radius:10px;
+    border:none;
+    cursor:pointer;
+    text-align:center;
+  }
+  .btn-primary{background:var(--hivis); color:var(--ink);}
+  .btn-ghost{background:var(--panel-raised); color:var(--paper); border:1px solid var(--line);}
+  .btn-row{display:flex; gap:10px;}
+  .btn-row .btn{flex:1;}
+  .manual-add{
+    display:none;
+    gap:8px;
+    margin-top:10px;
+  }
+  .manual-add.open{display:flex;}
+  .manual-add input{
+    flex:1;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    color:var(--paper);
+    border-radius:8px;
+    padding:9px 10px;
+  }
+  .foot-note{
+    font-size:11px;
+    color:var(--muted);
+    text-align:center;
+    margin-top:18px;
+    line-height:1.5;
+    padding:0 8px;
+  }
+  .redo-link{
+    background:none;
+    border:none;
+    color:var(--hivis);
+    text-decoration:underline;
+    font-size:11px;
+    cursor:pointer;
+    padding:0;
+    margin-top:6px;
+    font-family:'IBM Plex Sans', sans-serif;
+  }
+  .check-overlay{
+    position:fixed;
+    inset:0;
+    background:var(--ink);
+    z-index:1000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .check-overlay.hidden{display:none;}
+  .check-panel{
+    width:100%;
+    max-width:420px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:26px 22px;
+    text-align:center;
+  }
+  .check-panel .eyebrow{text-align:center;}
+  .check-title{
+    font-family:'Oswald', sans-serif;
+    font-size:24px;
+    text-transform:uppercase;
+    margin:4px 0 12px;
+  }
+  .check-step{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:10px;
+  }
+  .check-dots{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    margin-bottom:18px;
+  }
+  .check-dots .dot{
+    width:9px;height:9px;
+    border-radius:50%;
+    background:var(--line);
+  }
+  .check-dots .dot.done{background:var(--good);}
+  .check-dots .dot.current{background:var(--hivis);}
+  .check-confirm{margin-top:18px;}
+  .check-heard-text{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    color:var(--paper);
+    margin-bottom:14px;
+    line-height:1.5;
+  }
+  .check-success{padding-top:4px;}
+  .check-success p{color:var(--muted); font-size:14px; margin-bottom:16px;}
+  .check-success-icon{
+    width:56px;height:56px;
+    border-radius:50%;
+    background:var(--good);
+    color:var(--ink);
+    font-size:26px;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 auto 14px;
+  }
+  .check-skip .foot-note{margin-top:0; margin-bottom:16px;}
+  .front-overlay{
+    position:fixed;
+    inset:0;
+    background:var(--ink);
+    z-index:1001;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .front-overlay.hidden{display:none;}
+  .front-field{
+    margin-bottom:18px;
+    text-align:left;
+  }
+  .front-field label{
+    display:block;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:6px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+  }
+  .front-field input[type="text"],
+  .front-field input[type="date"]{
+    width:100%;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    color:var(--paper);
+    border-radius:8px;
+    padding:10px 11px;
+  }
+  .range-presets{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:2px;
+  }
+  .front-field select{
+    width:100%;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    color:var(--paper);
+    border-radius:8px;
+    padding:10px 11px;
+  }
+  .add-site-row{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+  }
+  .add-site-row input{
+    flex:1;
+    min-width:0;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    color:var(--paper);
+    border-radius:8px;
+    padding:9px 10px;
+  }
+  .range-hint{
+    font-size:11px;
+    color:var(--muted);
+    margin:8px 0 0;
+    line-height:1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="front-overlay" id="frontOverlay">
+  <div class="check-panel">
+    <div class="eyebrow">Session setup</div>
+    <h2 class="check-title">New Weigh Session</h2>
+
+    <div class="front-field">
+      <label for="siteSelect">Site</label>
+      <select id="siteSelect"></select>
+      <div class="add-site-row" id="addSiteRow" style="display:none;">
+        <input type="text" id="newSiteInput" placeholder="New site name">
+        <button type="button" class="btn btn-ghost" id="addSiteConfirmBtn">Add</button>
+      </div>
+    </div>
+
+    <div class="front-field">
+      <label for="dateInputField">Date</label>
+      <input type="date" id="dateInputField">
+    </div>
+
+    <div class="front-field">
+      <label>Anticipated weight range</label>
+      <div class="range-presets" id="rangePresets">
+        <button type="button" class="mode-btn" data-min="0" data-max="8" data-label="Weaning">Weaning 0–8 kg</button>
+        <button type="button" class="mode-btn" data-min="10" data-max="40" data-label="Nursery">Nursery 10–40 kg</button>
+        <button type="button" class="mode-btn active" data-min="80" data-max="120" data-label="Finisher">Finisher 80–120 kg</button>
+        <button type="button" class="mode-btn" data-min="100" data-max="140" data-label="Heavy Finisher">Heavy Finisher 100–140 kg</button>
+      </div>
+      <p class="range-hint">We expect around 80% of weighed pigs to fall inside this range — the tally board will track that as you go.</p>
+    </div>
+
+    <div class="status-line" id="frontStatusLine"></div>
+
+    <button class="btn btn-primary" id="frontContinueBtn" style="width:100%; margin-top:6px;">Continue to voice check</button>
+  </div>
+</div>
+
+<div class="check-overlay hidden" id="checkOverlay">
+  <div class="check-panel">
+    <div class="eyebrow">Setup check</div>
+    <h2 class="check-title">Voice check</h2>
+    <div class="check-step" id="checkStepLabel">Step 1 of 3</div>
+
+    <div class="check-dots" id="checkDots">
+      <span class="dot" data-i="0"></span><span class="dot" data-i="1"></span><span class="dot" data-i="2"></span>
+    </div>
+
+    <div class="readout-box" id="checkReadoutBox">
+      <div class="readout"><span id="checkReadoutValue">—.—</span><span class="unit">kg</span></div>
+      <div class="heard-line" id="checkHeardLine">Tap the mic and say a weight, e.g. "forty two kilos"</div>
+    </div>
+
+    <div class="mic-row" id="checkMicRow">
+      <button class="mic-btn" id="checkMicBtn" aria-label="Start voice check">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+          <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z" fill="currentColor"/>
+          <path d="M19 11a7 7 0 0 1-14 0" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <path d="M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="check-confirm" id="checkConfirmRow" style="display:none;">
+      <div class="check-heard-text" id="checkHeardText"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="checkYesBtn">Yes, that's right</button>
+        <button class="btn btn-ghost" id="checkNoBtn">No, redo</button>
+      </div>
+    </div>
+
+    <div class="check-success" id="checkSuccessWrap" style="display:none;">
+      <div class="check-success-icon">✓</div>
+      <p>3 for 3 — you're set.</p>
+      <button class="btn btn-primary" id="checkStartBtn">Start weighing</button>
+    </div>
+
+    <div class="check-skip" id="checkSkipWrap" style="display:none;">
+      <p class="foot-note">Your browser doesn't support voice input, so the check is skipped — you can still add weights manually once you're in.</p>
+      <button class="btn btn-ghost" id="checkSkipBtn">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+
+  <div class="header">
+    <div>
+      <div class="eyebrow" id="dateLabel">Weigh day</div>
+      <h1 class="title">Pig Weigh Station</h1>
+    </div>
+    <div class="tally-badge">HEAD <span id="headBadge">0</span></div>
+  </div>
+  <div class="stripe"></div>
+
+  <div class="panel">
+    <div class="tag-bar">
+      <label for="tagInput">Tag / Pen</label>
+      <input type="text" id="tagInput" inputmode="numeric" placeholder="e.g. 15" autocomplete="off">
+      <label class="auto-inc-label"><input type="checkbox" id="autoIncCheckbox" checked> auto +1</label>
+    </div>
+    <div class="readout-wrap">
+      <div class="readout-box" id="readoutBox">
+        <div class="readout"><span id="readoutValue">—.—</span><span class="unit">kg</span></div>
+        <div class="heard-line" id="heardLine">Tap the mic to start</div>
+      </div>
+
+      <div class="status-line" id="statusLine"></div>
+
+      <div class="mic-row">
+        <button class="mic-btn" id="micBtn" aria-label="Start listening">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+            <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z" fill="currentColor"/>
+            <path d="M19 11a7 7 0 0 1-14 0" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            <path d="M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="mode-row">
+        <button class="mode-btn active" id="modeOverBtn">Say "over" to log</button>
+        <button class="mode-btn" id="modePauseBtn">Auto-log on pause</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="board-title">Tally board</div>
+    <div id="boardBody"></div>
+    <div class="manual-add" id="manualAdd">
+      <input type="text" inputmode="decimal" placeholder="e.g. 42.5" id="manualInput">
+      <button class="btn btn-ghost" id="manualConfirm">Add</button>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <span>Head: <b id="statHead">0</b></span>
+    <span>Avg: <b id="statAvg">—</b> kg</span>
+    <span>In range: <b id="statInRange">—</b></span>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-ghost" id="toggleManualBtn">+ Add weight manually</button>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="exportBtn">Export to Excel</button>
+      <button class="btn btn-ghost" id="clearBtn">New mob</button>
+    </div>
+  </div>
+
+  <div class="foot-note">
+    Voice input uses your phone's browser speech engine (works best in Chrome). Farm noise and mixed accents can cause the odd misheard number — check the tally board and tap any figure to fix it before exporting.
+    <br><button class="redo-link" id="redoCheckBtn">Redo voice check</button>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micBtn = document.getElementById('micBtn');
+  const readoutBox = document.getElementById('readoutBox');
+  const readoutValue = document.getElementById('readoutValue');
+  const heardLine = document.getElementById('heardLine');
+  const statusLine = document.getElementById('statusLine');
+  const boardBody = document.getElementById('boardBody');
+  const headBadge = document.getElementById('headBadge');
+  const statHead = document.getElementById('statHead');
+  const statAvg = document.getElementById('statAvg');
+  const modeOverBtn = document.getElementById('modeOverBtn');
+  const modePauseBtn = document.getElementById('modePauseBtn');
+  const toggleManualBtn = document.getElementById('toggleManualBtn');
+  const manualAdd = document.getElementById('manualAdd');
+  const manualInput = document.getElementById('manualInput');
+  const manualConfirm = document.getElementById('manualConfirm');
+  const exportBtn = document.getElementById('exportBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const dateLabel = document.getElementById('dateLabel');
+  const tagInput = document.getElementById('tagInput');
+  const autoIncCheckbox = document.getElementById('autoIncCheckbox');
+  const statInRange = document.getElementById('statInRange');
+
+  let entries = [];
+  let isListening = false;
+  let mode = 'over'; // 'over' | 'pause'
+  let finalBuffer = '';
+  let recognition = null;
+
+  // Anticipated range set from the front screen
+  let EXPECTED_RANGE = {min:80, max:120};
+  let sessionRangeLabel = '';
+
+  // --- front screen (session setup) refs ---
+  const frontOverlay = document.getElementById('frontOverlay');
+  const siteSelect = document.getElementById('siteSelect');
+  const addSiteRow = document.getElementById('addSiteRow');
+  const newSiteInput = document.getElementById('newSiteInput');
+  const addSiteConfirmBtn = document.getElementById('addSiteConfirmBtn');
+  const dateInputField = document.getElementById('dateInputField');
+  const rangePresetButtons = document.querySelectorAll('#rangePresets .mode-btn');
+  const frontStatusLine = document.getElementById('frontStatusLine');
+  const frontContinueBtn = document.getElementById('frontContinueBtn');
+  const DEFAULT_SITES = ['Pittsworth Finisher'];
+  let customSites = [];
+  let sessionSite = '';
+  let sessionDateDisplay = '';
+
+  // --- voice check overlay refs ---
+  const checkOverlay = document.getElementById('checkOverlay');
+  const checkStepLabel = document.getElementById('checkStepLabel');
+  const checkDots = document.querySelectorAll('#checkDots .dot');
+  const checkReadoutValue = document.getElementById('checkReadoutValue');
+  const checkHeardLine = document.getElementById('checkHeardLine');
+  const checkMicBtn = document.getElementById('checkMicBtn');
+  const checkConfirmRow = document.getElementById('checkConfirmRow');
+  const checkHeardText = document.getElementById('checkHeardText');
+  const checkYesBtn = document.getElementById('checkYesBtn');
+  const checkNoBtn = document.getElementById('checkNoBtn');
+  const checkSuccessWrap = document.getElementById('checkSuccessWrap');
+  const checkStartBtn = document.getElementById('checkStartBtn');
+  const checkSkipWrap = document.getElementById('checkSkipWrap');
+  const checkSkipBtn = document.getElementById('checkSkipBtn');
+  const redoCheckBtn = document.getElementById('redoCheckBtn');
+  const CHECK_TOTAL = 3;
+  let checkStep = 0;
+  let checkListening = false;
+  let pendingCheckWeight = null;
+  let pendingCheckRaw = '';
+
+  dateInputField.value = new Date().toISOString().slice(0,10);
+
+  // ---------- storage ----------
+  async function persist(){
+    try{
+      if(window.storage && window.storage.set){
+        await window.storage.set('pig-weigh-entries', JSON.stringify(entries), false);
+      }
+    }catch(e){ /* storage not available, continue in-memory only */ }
+  }
+  async function loadPersisted(){
+    try{
+      if(window.storage && window.storage.get){
+        const res = await window.storage.get('pig-weigh-entries');
+        if(res && res.value){
+          entries = JSON.parse(res.value) || [];
+        }
+      }
+    }catch(e){ entries = []; }
+    renderBoard();
+  }
+
+  // ---------- number parsing ----------
+  const onesMap = {zero:0,oh:0,one:1,two:2,to:2,too:2,three:3,four:4,for:4,five:5,six:6,seven:7,eight:8,nine:9};
+  const teensMap = {ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19};
+  const tensMap = {twenty:20,thirty:30,forty:40,fourty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+  const fractionMap = {half:0.5,quarter:0.25};
+
+  function wordsToNumber(tokens){
+    let total = 0, current = 0, i = 0, foundAny = false;
+    while(i < tokens.length){
+      const w = tokens[i];
+      if(w === 'point'){
+        i++;
+        let decStr = '';
+        while(i < tokens.length && onesMap.hasOwnProperty(tokens[i])){
+          decStr += onesMap[tokens[i]];
+          i++;
+        }
+        if(decStr){
+          total += current;
+          current = 0;
+          total = parseFloat(total + '.' + decStr);
+          foundAny = true;
+        }
+        continue;
+      }
+      if(w === 'and'){ i++; continue; }
+      if(fractionMap.hasOwnProperty(w)){ current += fractionMap[w]; foundAny = true; i++; continue; }
+      if(tensMap.hasOwnProperty(w)){ current += tensMap[w]; foundAny = true; i++; continue; }
+      if(teensMap.hasOwnProperty(w)){ current += teensMap[w]; foundAny = true; i++; continue; }
+      if(w === 'hundred'){ current = (current || 1) * 100; foundAny = true; i++; continue; }
+      if(w === 'thousand'){ total += (current || 1) * 1000; current = 0; foundAny = true; i++; continue; }
+      if(onesMap.hasOwnProperty(w)){ current += onesMap[w]; foundAny = true; i++; continue; }
+      i++;
+    }
+    total += current;
+    return foundAny ? total : null;
+  }
+
+  function parseWeight(rawText){
+    let t = ' ' + rawText.toLowerCase().trim() + ' ';
+    const phraseFillers = ['give or take','call it','bang on','straight up','a tick over','a squeak under',"she's about",'roughly','approximately','approx'];
+    phraseFillers.forEach(p => { t = t.split(p).join(' '); });
+
+    const digitMatch = t.match(/(\d+(?:\.\d+)?)/);
+    if(digitMatch) return parseFloat(digitMatch[1]);
+
+    const fillers = ['kilograms','kilogram','kilos','kilo','kgs','kg','about','ish','weighs','weighing','weight','pig','pigs','sow','boar','porker','shes',"she's",'hes',"he's",'its',"it's",'is','was','the','thats',"that's",'even','flat','she','he'];
+    const tokens = t.trim().split(/\s+/).filter(w => w && !fillers.includes(w));
+    if(tokens.length === 0) return null;
+    return wordsToNumber(tokens);
+  }
+
+  // ---------- entries ----------
+  function computeReviewReason(weight){
+    if(weight === null || isNaN(weight)) return 'no-number';
+    if(EXPECTED_RANGE){
+      const width = EXPECTED_RANGE.max - EXPECTED_RANGE.min;
+      const buffer = Math.max(10, width * 0.6);
+      if(weight < EXPECTED_RANGE.min - buffer || weight > EXPECTED_RANGE.max + buffer) return 'out-of-range';
+    }
+    return null;
+  }
+  function addEntry(weight, raw){
+    const reviewReason = computeReviewReason(weight);
+    const tag = tagInput ? tagInput.value.trim() : '';
+    entries.push({
+      id: 'e' + Date.now() + Math.random().toString(36).slice(2,6),
+      weight: weight,
+      tag: tag,
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+      raw: raw,
+      reviewReason: reviewReason
+    });
+    persist();
+    renderBoard();
+
+    if(autoIncCheckbox && autoIncCheckbox.checked && tag && /^\d+$/.test(tag)){
+      tagInput.value = String(parseInt(tag, 10) + 1);
+    }
+  }
+  function deleteEntry(id){
+    entries = entries.filter(e => e.id !== id);
+    persist();
+    renderBoard();
+  }
+  function recomputeReviewReason(e){
+    e.reviewReason = computeReviewReason(e.weight);
+  }
+  function updateEntryWeight(id, val){
+    const e = entries.find(e => e.id === id);
+    if(!e) return;
+    const n = parseFloat(val);
+    e.weight = isNaN(n) ? null : n;
+    recomputeReviewReason(e);
+    persist();
+    renderBoard();
+  }
+  function updateEntryTag(id, val){
+    const e = entries.find(e => e.id === id);
+    if(!e) return;
+    e.tag = val.trim();
+    persist();
+    renderBoard();
+  }
+
+  function renderBoard(){
+    boardBody.innerHTML = '';
+    if(entries.length === 0){
+      boardBody.innerHTML = '<div class="empty-note">No pigs weighed yet. First reading will show up here.</div>';
+    } else {
+      entries.forEach((e, idx) => {
+        const row = document.createElement('div');
+        row.className = 'row' + (e.reviewReason ? ' needs-review' : '');
+        let noteHtml = '';
+        if(e.reviewReason === 'no-number'){
+          noteHtml = `<div class="review-note">heard: "${e.raw.replace(/"/g,'')}"</div>`;
+        } else if(e.reviewReason === 'out-of-range'){
+          noteHtml = `<div class="review-note">flagged: ${e.weight}kg is outside your usual range — double-check</div>`;
+        }
+        row.innerHTML = `
+          <div class="num">${String(idx+1).padStart(2,'0')}</div>
+          <input class="weight-input" type="text" inputmode="numeric" value="${e.tag ? e.tag.replace(/"/g,'') : ''}" placeholder="tag" data-id="${e.id}" data-field="tag">
+          <input class="weight-input" type="text" inputmode="decimal" value="${e.weight === null ? '' : e.weight}" placeholder="kg" data-id="${e.id}" data-field="weight">
+          <div class="time">${e.time}</div>
+          <button class="del" data-id="${e.id}" aria-label="Delete entry">✕</button>
+          ${noteHtml}
+        `;
+        boardBody.appendChild(row);
+      });
+    }
+
+    boardBody.querySelectorAll('.weight-input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        if(inp.dataset.field === 'tag'){
+          updateEntryTag(inp.dataset.id, inp.value);
+        } else {
+          updateEntryWeight(inp.dataset.id, inp.value);
+        }
+      });
+    });
+    boardBody.querySelectorAll('.del').forEach(btn => {
+      btn.addEventListener('click', () => deleteEntry(btn.dataset.id));
+    });
+
+    const validWeights = entries.map(e => e.weight).filter(w => w !== null && !isNaN(w));
+    headBadge.textContent = entries.length;
+    statHead.textContent = entries.length;
+    statAvg.textContent = validWeights.length ? (validWeights.reduce((a,b)=>a+b,0)/validWeights.length).toFixed(1) : '—';
+
+    const stats = computeStats();
+    if(stats.pct === null){
+      statInRange.textContent = '—';
+      statInRange.style.color = '';
+    } else {
+      statInRange.textContent = stats.pct + '%';
+      statInRange.style.color = stats.pct >= 80 ? 'var(--good)' : 'var(--eartag)';
+    }
+  }
+
+  function computeStats(){
+    const valid = entries.filter(e => e.weight !== null && !isNaN(e.weight));
+    const inRange = EXPECTED_RANGE ? valid.filter(e => e.weight >= EXPECTED_RANGE.min && e.weight <= EXPECTED_RANGE.max).length : 0;
+    const pct = valid.length ? Math.round(100 * inRange / valid.length) : null;
+    return {valid: valid.length, inRange: inRange, pct: pct};
+  }
+
+  // ---------- readout feedback ----------
+  let flashTimeout = null;
+  function flash(kind){
+    readoutBox.classList.remove('flash-good','flash-review');
+    void readoutBox.offsetWidth;
+    readoutBox.classList.add(kind);
+    clearTimeout(flashTimeout);
+    flashTimeout = setTimeout(() => readoutBox.classList.remove(kind), 900);
+  }
+  function showReadout(text){
+    const guess = text ? parseWeight(text) : null;
+    readoutValue.textContent = guess !== null && guess !== undefined ? guess : '—.—';
+  }
+
+  function processUtterance(rawText){
+    const cleaned = rawText.trim();
+    if(!cleaned) return;
+    const weight = parseWeight(cleaned);
+    if(weight !== null && !isNaN(weight)){
+      addEntry(weight, cleaned);
+      flash('flash-good');
+      heardLine.textContent = 'Logged: "' + cleaned + '"';
+    } else {
+      addEntry(null, cleaned);
+      flash('flash-review');
+      heardLine.textContent = 'Couldn\'t catch a number — check the tally board';
+    }
+    readoutValue.textContent = '—.—';
+  }
+
+  // ---------- speech recognition ----------
+  function initRecognition(){
+    if(!SpeechRecognition){
+      statusLine.textContent = 'Voice input isn\'t supported in this browser. Try Chrome, or add weights manually below.';
+      statusLine.classList.add('warn');
+      micBtn.disabled = true;
+      return;
+    }
+    const isiOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if(isiOS){
+      statusLine.textContent = 'On iPhone (Safari), it may pause listening after each reading — just tap the mic again if it stops.';
+    }
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-AU';
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      for(let i = event.resultIndex; i < event.results.length; i++){
+        const transcript = event.results[i][0].transcript;
+        if(event.results[i].isFinal){
+          if(mode === 'pause'){
+            processUtterance(transcript);
+          } else {
+            finalBuffer += ' ' + transcript;
+            checkForTrigger();
+          }
+        } else {
+          interim += transcript;
+        }
+      }
+      if(interim){
+        heardLine.textContent = 'hearing: "' + interim.trim() + '"';
+        showReadout((mode === 'over' ? finalBuffer + ' ' + interim : interim));
+      } else if(mode === 'over' && finalBuffer.trim()){
+        heardLine.textContent = 'hearing: "' + finalBuffer.trim() + '"';
+        showReadout(finalBuffer);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      if(event.error === 'not-allowed' || event.error === 'service-not-allowed'){
+        statusLine.textContent = 'Microphone access blocked — allow it in your browser settings.';
+        statusLine.classList.add('warn');
+        stopListening();
+      } else if(event.error === 'no-speech'){
+        // ignore, keep listening
+      } else {
+        statusLine.textContent = 'Voice hiccup (' + event.error + ') — still listening.';
+      }
+    };
+
+    recognition.onend = () => {
+      if(isListening){
+        try{ recognition.start(); }catch(e){ /* already running */ }
+      }
+    };
+  }
+
+  function checkForTrigger(){
+    const lower = finalBuffer.toLowerCase();
+    const match = lower.match(/\b(over|roger|done)\b/);
+    if(match){
+      const before = lower.slice(0, match.index);
+      processUtterance(before);
+      finalBuffer = lower.slice(match.index + match[0].length);
+    }
+  }
+
+  function startListening(){
+    if(!recognition) return;
+    try{ recognition.start(); }catch(e){ /* ignore double-start */ }
+    isListening = true;
+    finalBuffer = '';
+    micBtn.classList.add('on');
+    readoutBox.classList.add('listening');
+    micBtn.setAttribute('aria-label','Stop listening');
+    statusLine.textContent = '';
+    statusLine.classList.remove('warn');
+    heardLine.textContent = mode === 'over' ? 'Listening… say weight, then "over"' : 'Listening… pause after each weight';
+  }
+  function stopListening(){
+    isListening = false;
+    if(recognition){ try{ recognition.stop(); }catch(e){} }
+    micBtn.classList.remove('on');
+    readoutBox.classList.remove('listening');
+    micBtn.setAttribute('aria-label','Start listening');
+    heardLine.textContent = 'Tap the mic to start';
+    readoutValue.textContent = '—.—';
+  }
+
+  micBtn.addEventListener('click', () => {
+    if(isListening) stopListening(); else startListening();
+  });
+
+  modeOverBtn.addEventListener('click', () => {
+    mode = 'over';
+    modeOverBtn.classList.add('active');
+    modePauseBtn.classList.remove('active');
+    finalBuffer = '';
+  });
+  modePauseBtn.addEventListener('click', () => {
+    mode = 'pause';
+    modePauseBtn.classList.add('active');
+    modeOverBtn.classList.remove('active');
+    finalBuffer = '';
+  });
+
+  toggleManualBtn.addEventListener('click', () => {
+    manualAdd.classList.toggle('open');
+    if(manualAdd.classList.contains('open')) manualInput.focus();
+  });
+  function submitManual(){
+    const val = parseFloat(manualInput.value);
+    if(!isNaN(val)){
+      addEntry(val, 'manual entry');
+      manualInput.value = '';
+    }
+  }
+  manualConfirm.addEventListener('click', submitManual);
+  manualInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') submitManual(); });
+
+  clearBtn.addEventListener('click', () => {
+    if(entries.length === 0) return;
+    if(confirm('Start a new mob? This clears the current tally board (export first if you need it).')){
+      entries = [];
+      persist();
+      renderBoard();
+      showFrontScreen();
+    }
+  });
+
+  function slugify(s){
+    return (s || 'site').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'site';
+  }
+
+  exportBtn.addEventListener('click', () => {
+    if(entries.length === 0){
+      statusLine.textContent = 'No weights recorded yet.';
+      return;
+    }
+    if(typeof XLSX === 'undefined'){
+      statusLine.textContent = 'Export library failed to load — check your connection and try again.';
+      statusLine.classList.add('warn');
+      return;
+    }
+    const rangeDisplay = sessionRangeLabel || (EXPECTED_RANGE ? (EXPECTED_RANGE.min + '–' + EXPECTED_RANGE.max + ' kg') : '');
+    const stats = computeStats();
+    const aoa = [
+      ['Site', sessionSite || ''],
+      ['Date', sessionDateDisplay || ''],
+      ['Anticipated range', rangeDisplay],
+      ['In expected range', stats.pct === null ? '' : stats.pct + '% (target 80%)'],
+      [],
+      ['#','Tag/Pen','Weight (kg)','Time','Notes']
+    ];
+    entries.forEach((e, idx) => {
+      let note = '';
+      if(e.reviewReason === 'no-number') note = 'heard: ' + e.raw;
+      else if(e.reviewReason === 'out-of-range') note = 'flagged: outside usual range';
+      aoa.push([idx + 1, e.tag || '', e.weight === null ? '' : e.weight, e.time, note]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:16},{wch:9},{wch:12},{wch:10},{wch:28}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Pig Weights');
+    const dateForFile = dateInputField.value || new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, 'pig-weights-' + slugify(sessionSite) + '-' + dateForFile + '.xlsx');
+  });
+
+  // --- voice check flow ---
+  function updateCheckDots(){
+    checkDots.forEach((dot, i) => {
+      dot.classList.remove('done','current');
+      if(i < checkStep) dot.classList.add('done');
+      else if(i === checkStep) dot.classList.add('current');
+    });
+  }
+
+  function resetCheckStepUI(){
+    checkConfirmRow.style.display = 'none';
+    checkReadoutValue.textContent = '—.—';
+    checkHeardLine.classList.remove('warn');
+    checkHeardLine.textContent = 'Tap the mic and say a weight, e.g. "forty two kilos"';
+    checkMicBtn.classList.remove('on');
+    checkStepLabel.textContent = 'Step ' + (checkStep + 1) + ' of ' + CHECK_TOTAL;
+    updateCheckDots();
+  }
+
+  function showCheckSuccess(){
+    document.getElementById('checkMicRow').style.display = 'none';
+    checkReadoutValue.parentElement.parentElement.style.display = 'none';
+    checkStepLabel.style.display = 'none';
+    checkConfirmRow.style.display = 'none';
+    checkSuccessWrap.style.display = 'block';
+  }
+
+  function startCheckListening(){
+    if(!SpeechRecognition || checkListening) return;
+    const checkRecognition = new SpeechRecognition();
+    checkRecognition.continuous = false;
+    checkRecognition.interimResults = true;
+    checkRecognition.lang = 'en-AU';
+    let gotFinal = false;
+
+    checkRecognition.onresult = (event) => {
+      let interim = '';
+      let finalText = '';
+      for(let i = event.resultIndex; i < event.results.length; i++){
+        if(event.results[i].isFinal) finalText += event.results[i][0].transcript;
+        else interim += event.results[i][0].transcript;
+      }
+      if(finalText){
+        gotFinal = true;
+        const weight = parseWeight(finalText);
+        if(weight === null || isNaN(weight)){
+          checkHeardLine.classList.add('warn');
+          checkHeardLine.textContent = 'Couldn\'t catch a number in "' + finalText.trim() + '" — tap the mic and try again';
+          checkReadoutValue.textContent = '—.—';
+          checkMicBtn.classList.remove('on');
+          checkListening = false;
+        } else {
+          pendingCheckWeight = weight;
+          pendingCheckRaw = finalText.trim();
+          checkHeardText.textContent = 'Heard: "' + pendingCheckRaw + '" → parsed as ' + weight + ' kg. Is that right?';
+          checkConfirmRow.style.display = 'block';
+          checkMicBtn.classList.remove('on');
+          checkListening = false;
+        }
+      } else if(interim){
+        checkHeardLine.classList.remove('warn');
+        checkHeardLine.textContent = 'hearing: "' + interim.trim() + '"';
+        const guess = parseWeight(interim);
+        checkReadoutValue.textContent = guess !== null ? guess : '—.—';
+      }
+    };
+
+    checkRecognition.onerror = (event) => {
+      checkListening = false;
+      checkMicBtn.classList.remove('on');
+      if(event.error === 'not-allowed' || event.error === 'service-not-allowed'){
+        checkHeardLine.classList.add('warn');
+        checkHeardLine.textContent = 'Microphone access blocked — allow it in your browser settings.';
+      } else if(event.error !== 'no-speech'){
+        checkHeardLine.classList.add('warn');
+        checkHeardLine.textContent = 'Voice hiccup — tap the mic and try again.';
+      }
+    };
+
+    checkRecognition.onend = () => {
+      checkListening = false;
+      checkMicBtn.classList.remove('on');
+      if(!gotFinal && checkConfirmRow.style.display === 'none'){
+        checkHeardLine.classList.add('warn');
+        checkHeardLine.textContent = 'Didn\'t catch anything — tap the mic and try again';
+        checkReadoutValue.textContent = '—.—';
+      }
+    };
+
+    try{
+      checkRecognition.start();
+      checkListening = true;
+      checkMicBtn.classList.add('on');
+      checkHeardLine.classList.remove('warn');
+      checkHeardLine.textContent = 'Listening…';
+    }catch(e){ /* ignore double-start */ }
+  }
+
+  function initCheck(){
+    checkStep = 0;
+    checkOverlay.classList.remove('hidden');
+    document.getElementById('checkMicRow').style.display = 'flex';
+    checkReadoutValue.parentElement.parentElement.style.display = '';
+    checkStepLabel.style.display = '';
+    checkSuccessWrap.style.display = 'none';
+    checkConfirmRow.style.display = 'none';
+    if(!SpeechRecognition){
+      document.getElementById('checkMicRow').style.display = 'none';
+      checkReadoutValue.parentElement.parentElement.style.display = 'none';
+      checkStepLabel.style.display = 'none';
+      checkSkipWrap.style.display = 'block';
+      return;
+    }
+    checkSkipWrap.style.display = 'none';
+    resetCheckStepUI();
+  }
+
+  checkMicBtn.addEventListener('click', () => startCheckListening());
+  checkYesBtn.addEventListener('click', () => {
+    checkStep++;
+    if(checkStep >= CHECK_TOTAL){
+      showCheckSuccess();
+    } else {
+      resetCheckStepUI();
+    }
+  });
+  checkNoBtn.addEventListener('click', () => {
+    resetCheckStepUI();
+  });
+  checkStartBtn.addEventListener('click', () => {
+    checkOverlay.classList.add('hidden');
+  });
+  checkSkipBtn.addEventListener('click', () => {
+    checkOverlay.classList.add('hidden');
+  });
+  redoCheckBtn.addEventListener('click', () => {
+    initCheck();
+  });
+
+  // --- site dropdown (with persisted "add new site") ---
+  function rebuildSiteOptions(preserveValue){
+    const prev = preserveValue !== undefined ? preserveValue : siteSelect.value;
+    const allSites = DEFAULT_SITES.concat(customSites);
+    siteSelect.innerHTML = '';
+    allSites.forEach(site => {
+      const opt = document.createElement('option');
+      opt.value = site;
+      opt.textContent = site;
+      siteSelect.appendChild(opt);
+    });
+    const addOpt = document.createElement('option');
+    addOpt.value = '__add_new__';
+    addOpt.textContent = '+ Add new site…';
+    siteSelect.appendChild(addOpt);
+    if(prev && allSites.includes(prev)) siteSelect.value = prev;
+  }
+  async function loadSites(){
+    try{
+      if(window.storage && window.storage.get){
+        const res = await window.storage.get('pig-weigh-sites');
+        if(res && res.value) customSites = JSON.parse(res.value) || [];
+      }
+    }catch(e){ customSites = []; }
+    rebuildSiteOptions();
+  }
+  async function saveSites(){
+    try{
+      if(window.storage && window.storage.set){
+        await window.storage.set('pig-weigh-sites', JSON.stringify(customSites), false);
+      }
+    }catch(e){ /* storage not available */ }
+  }
+  rebuildSiteOptions();
+
+  siteSelect.addEventListener('change', () => {
+    if(siteSelect.value === '__add_new__'){
+      addSiteRow.style.display = 'flex';
+      newSiteInput.focus();
+    } else {
+      addSiteRow.style.display = 'none';
+    }
+  });
+  addSiteConfirmBtn.addEventListener('click', () => {
+    const name = newSiteInput.value.trim();
+    if(!name) return;
+    if(!customSites.includes(name) && !DEFAULT_SITES.includes(name)){
+      customSites.push(name);
+      saveSites();
+    }
+    rebuildSiteOptions(name);
+    addSiteRow.style.display = 'none';
+    newSiteInput.value = '';
+  });
+  newSiteInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') addSiteConfirmBtn.click(); });
+
+  // --- front screen flow ---
+  function applyFrontDetails(){
+    sessionSite = siteSelect.value === '__add_new__' ? '' : siteSelect.value;
+    const d = dateInputField.value ? new Date(dateInputField.value + 'T00:00:00') : new Date();
+    sessionDateDisplay = d.toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
+    dateLabel.textContent = (sessionSite ? sessionSite + ' · ' : '') + sessionDateDisplay;
+  }
+
+  function showFrontScreen(){
+    dateInputField.value = new Date().toISOString().slice(0,10);
+    frontStatusLine.textContent = '';
+    frontStatusLine.classList.remove('warn');
+    checkOverlay.classList.add('hidden');
+    frontOverlay.classList.remove('hidden');
+  }
+
+  rangePresetButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      rangePresetButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  frontContinueBtn.addEventListener('click', () => {
+    frontStatusLine.classList.remove('warn');
+    if(siteSelect.value === '__add_new__'){
+      frontStatusLine.textContent = 'Add the new site name, or pick an existing site.';
+      frontStatusLine.classList.add('warn');
+      return;
+    }
+    const activeBtn = document.querySelector('#rangePresets .mode-btn.active');
+    if(!activeBtn){
+      frontStatusLine.textContent = 'Pick an anticipated weight range.';
+      frontStatusLine.classList.add('warn');
+      return;
+    }
+    EXPECTED_RANGE = {min: parseFloat(activeBtn.dataset.min), max: parseFloat(activeBtn.dataset.max)};
+    sessionRangeLabel = activeBtn.dataset.label + ' ' + activeBtn.dataset.min + '–' + activeBtn.dataset.max + ' kg';
+    applyFrontDetails();
+    frontOverlay.classList.add('hidden');
+    initCheck();
+  });
+
+  initRecognition();
+  loadPersisted();
+  loadSites();
+})();
+</script>
+</body>
+</html>

@@ -327,7 +327,7 @@
   <div class="panel">
     <div class="readout-wrap">
       <div class="readout-box" id="readoutBox">
-        <div class="readout"><span id="readoutValue">&mdash;.&mdash;</span><span class="unit">kg</span></div>
+        <div class="readout"><span id="readoutValue">&mdash;.&mdash;</span><span class="unit" id="readoutUnit">kg</span></div>
         <div class="heard-line" id="heardLine">Tap the mic to start</div>
       </div>
 
@@ -388,6 +388,7 @@
   const micBtn = document.getElementById('micBtn');
   const readoutBox = document.getElementById('readoutBox');
   const readoutValue = document.getElementById('readoutValue');
+  const readoutUnit = document.getElementById('readoutUnit');
   const heardLine = document.getElementById('heardLine');
   const statusLine = document.getElementById('statusLine');
   const boardBody = document.getElementById('boardBody');
@@ -686,6 +687,10 @@
   function resetStage(){
     awaitingStage = INCLUDE_ID ? 'id' : 'weight';
     pendingAnimalId = null;
+    updateReadoutUnit();
+  }
+  function updateReadoutUnit(){
+    readoutUnit.textContent = (INCLUDE_ID && awaitingStage === 'id') ? 'I.D.' : 'kg';
   }
   function stagePromptText(){
     if(mode === 'pause') return 'Listening\u2026 pause after each weight';
@@ -701,6 +706,7 @@
       const idVal = parseSpokenId(cleaned) || cleaned;
       pendingAnimalId = idVal;
       awaitingStage = 'weight';
+      updateReadoutUnit();
       flash('flash-good');
       heardLine.textContent = 'I.D. ' + pendingAnimalId + ' \u2014 now say the weight, then "over"';
       readoutValue.textContent = '\u2014.\u2014';
@@ -718,7 +724,7 @@
       flash('flash-review');
       heardLine.textContent = 'Couldn\'t catch a number \u2014 check the tally board';
     }
-    if(INCLUDE_ID){ awaitingStage = 'id'; pendingAnimalId = null; }
+    if(INCLUDE_ID){ awaitingStage = 'id'; pendingAnimalId = null; updateReadoutUnit(); }
     readoutValue.textContent = '\u2014.\u2014';
   }
 

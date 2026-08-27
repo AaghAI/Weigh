@@ -3,13 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pig Weigh Station</title>
-<meta name="apple-mobile-web-app-title" content="Pig Weigh Station">
+<title>FarmTalk Mod1</title>
+<meta name="apple-mobile-web-app-title" content="FarmTalk Mod1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(e){ console.log('SW registration failed:', e); });
+    });
+  }
+</script>
 <style>
   :root{
     --ink:#1B211D;
@@ -34,461 +41,121 @@
     justify-content:center;
     padding:18px 12px 40px;
   }
-  .app{
-    width:100%;
-    max-width:480px;
-  }
-  .header{
-    display:flex;
-    align-items:baseline;
-    justify-content:space-between;
-    padding:4px 2px 10px;
-  }
-  .eyebrow{
-    font-family:'IBM Plex Mono', monospace;
-    font-size:11px;
-    letter-spacing:.14em;
-    color:var(--muted);
-    text-transform:uppercase;
-  }
-  .title{
-    font-family:'Oswald', sans-serif;
-    font-weight:600;
-    font-size:26px;
-    letter-spacing:.02em;
-    text-transform:uppercase;
-    margin:2px 0 0;
-  }
-  .tally-badge{
-    font-family:'IBM Plex Mono', monospace;
-    font-size:12px;
-    color:var(--ink);
-    background:var(--hivis);
-    padding:5px 10px;
-    border-radius:999px;
-    font-weight:600;
-    white-space:nowrap;
-  }
-  .stripe{
-    height:6px;
-    border-radius:3px;
-    margin:2px 0 18px;
-    background:repeating-linear-gradient(
-      -45deg,
-      var(--hivis) 0px, var(--hivis) 10px,
-      var(--ink) 10px, var(--ink) 20px
-    );
-    opacity:.9;
-  }
-  .panel{
-    background:var(--panel);
-    border-radius:var(--radius);
-    border:1px solid var(--line);
-    padding:20px 18px;
-    margin-bottom:14px;
-  }
-  .tag-bar{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    margin-bottom:14px;
-    font-size:12px;
-    color:var(--muted);
-  }
-  .tag-bar label{white-space:nowrap;}
-  .tag-bar input[type="text"]{
-    font-family:'IBM Plex Mono', monospace;
-    font-size:15px;
-    background:var(--panel-raised);
-    border:1px solid var(--line);
-    color:var(--paper);
-    border-radius:8px;
-    padding:7px 9px;
-    width:70px;
-  }
-  .auto-inc-label{
-    display:flex;
-    align-items:center;
-    gap:5px;
-    margin-left:auto;
-    font-size:11px;
-  }
-  .readout-wrap{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    text-align:center;
-  }
-  .readout-box{
-    background:#141917;
-    border:2px solid var(--line);
-    border-radius:12px;
-    padding:18px 14px;
-    width:100%;
-    transition:border-color .25s ease, box-shadow .25s ease;
-  }
-  .readout-box.listening{
-    border-color:var(--hivis);
-    animation:pulseRing 1.6s ease-out infinite;
-  }
-  .readout-box.flash-good{
-    border-color:var(--good);
-    box-shadow:0 0 0 4px rgba(111,169,107,0.25);
-  }
-  .readout-box.flash-review{
-    border-color:var(--eartag);
-    box-shadow:0 0 0 4px rgba(226,98,44,0.25);
-  }
-  @keyframes pulseRing{
-    0%{box-shadow:0 0 0 0 rgba(245,196,0,.45);}
-    100%{box-shadow:0 0 0 18px rgba(245,196,0,0);}
-  }
-  @media (prefers-reduced-motion: reduce){
-    .readout-box.listening{animation:none;}
-  }
-  .readout{
-    font-family:'IBM Plex Mono', monospace;
-    font-weight:600;
-    font-size:44px;
-    letter-spacing:.02em;
-    color:var(--paper);
-    line-height:1;
-  }
-  .readout .unit{
-    font-size:18px;
-    color:var(--muted);
-    margin-left:6px;
-  }
-  .heard-line{
-    font-family:'IBM Plex Mono', monospace;
-    font-size:12px;
-    color:var(--muted);
-    min-height:16px;
-    margin-top:8px;
-    word-break:break-word;
-  }
-  .status-line{
-    font-size:13px;
-    color:var(--muted);
-    text-align:center;
-    margin-top:14px;
-    min-height:18px;
-  }
+  .app{ width:100%; max-width:480px; }
+  .header{ display:flex; align-items:baseline; justify-content:space-between; padding:4px 2px 10px; }
+  .eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.14em; color:var(--muted); text-transform:uppercase; }
+  .title{ font-family:'Oswald', sans-serif; font-weight:600; font-size:26px; letter-spacing:.02em; text-transform:uppercase; margin:2px 0 0; }
+  .session-note{ font-size:11px; color:var(--muted); margin-top:3px; }
+  .tally-badge{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink); background:var(--hivis); padding:5px 10px; border-radius:999px; font-weight:600; white-space:nowrap; }
+  .stripe{ height:6px; border-radius:3px; margin:2px 0 18px; background:repeating-linear-gradient(-45deg, var(--hivis) 0px, var(--hivis) 10px, var(--ink) 10px, var(--ink) 20px); opacity:.9; }
+  .panel{ background:var(--panel); border-radius:var(--radius); border:1px solid var(--line); padding:20px 18px; margin-bottom:14px; }
+  .readout-wrap{ display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .readout-box{ background:#141917; border:2px solid var(--line); border-radius:12px; padding:18px 14px; width:100%; transition:border-color .25s ease, box-shadow .25s ease; }
+  .readout-box.listening{ border-color:var(--hivis); animation:pulseRing 1.6s ease-out infinite; }
+  .readout-box.flash-good{ border-color:var(--good); box-shadow:0 0 0 4px rgba(111,169,107,0.25); }
+  .readout-box.flash-review{ border-color:var(--eartag); box-shadow:0 0 0 4px rgba(226,98,44,0.25); }
+  @keyframes pulseRing{ 0%{box-shadow:0 0 0 0 rgba(245,196,0,.45);} 100%{box-shadow:0 0 0 18px rgba(245,196,0,0);} }
+  @media (prefers-reduced-motion: reduce){ .readout-box.listening{animation:none;} }
+  .readout{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:44px; letter-spacing:.02em; color:var(--paper); line-height:1; }
+  .readout .unit{ font-size:18px; color:var(--muted); margin-left:6px; }
+  .heard-line{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--muted); min-height:16px; margin-top:8px; word-break:break-word; }
+  .status-line{ font-size:13px; color:var(--muted); text-align:center; margin-top:14px; min-height:18px; }
   .status-line.warn{color:var(--eartag);}
-  .mic-row{
-    display:flex;
-    justify-content:center;
-    margin-top:16px;
-  }
-  .mic-btn{
-    width:76px;height:76px;
-    border-radius:50%;
-    border:none;
-    background:var(--hivis);
-    color:var(--ink);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    cursor:pointer;
-    transition:transform .12s ease, background .2s ease;
-  }
+  .mic-row{ display:flex; justify-content:center; margin-top:16px; }
+  .mic-btn{ width:76px;height:76px; border-radius:50%; border:none; background:var(--hivis); color:var(--ink); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .12s ease, background .2s ease; }
   .mic-btn:active{transform:scale(.94);}
   .mic-btn.on{background:var(--eartag); color:var(--paper);}
   .mic-btn:focus-visible{outline:3px solid var(--paper); outline-offset:3px;}
-  .mode-row{
-    display:flex;
-    gap:8px;
-    margin-top:16px;
-    justify-content:center;
-    flex-wrap:wrap;
-  }
-  .mode-btn{
-    font-family:'IBM Plex Sans', sans-serif;
-    font-size:12px;
-    padding:7px 12px;
-    border-radius:999px;
-    border:1px solid var(--line);
-    background:transparent;
-    color:var(--muted);
-    cursor:pointer;
-  }
-  .mode-btn.active{
-    background:var(--panel-raised);
-    color:var(--paper);
-    border-color:var(--hivis);
-  }
-  .board-title{
-    font-family:'Oswald', sans-serif;
-    font-size:14px;
-    letter-spacing:.1em;
-    text-transform:uppercase;
-    color:var(--muted);
-    margin:0 0 12px;
-  }
-  .row{
-    display:grid;
-    grid-template-columns:22px 54px 1fr 58px 26px;
-    align-items:center;
-    gap:6px;
-    padding:9px 0;
-    border-bottom:1px solid var(--line);
-  }
+  .mode-row{ display:flex; gap:8px; margin-top:16px; justify-content:center; flex-wrap:wrap; }
+  .mode-btn{ font-family:'IBM Plex Sans', sans-serif; font-size:12px; padding:7px 12px; border-radius:999px; border:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; }
+  .mode-btn.active{ background:var(--panel-raised); color:var(--paper); border-color:var(--hivis); }
+  .mode-btn:disabled{ opacity:.35; cursor:not-allowed; }
+  .board-title{ font-family:'Oswald', sans-serif; font-size:14px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:0 0 12px; }
+  .row{ display:grid; grid-template-columns:22px 1fr 58px 26px; align-items:center; gap:6px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .row.with-id{ grid-template-columns:22px 54px 1fr 58px 26px; }
   .row:last-child{border-bottom:none;}
-  .row .num{
-    font-family:'IBM Plex Mono', monospace;
-    color:var(--muted);
-    font-size:13px;
-  }
-  .row .weight-input{
-    font-family:'IBM Plex Mono', monospace;
-    font-size:16px;
-    background:var(--panel-raised);
-    border:1px solid var(--line);
-    color:var(--paper);
-    border-radius:8px;
-    padding:7px 8px;
-    width:100%;
-  }
+  .row .num{ font-family:'IBM Plex Mono', monospace; color:var(--muted); font-size:13px; }
+  .row .weight-input{ font-family:'IBM Plex Mono', monospace; font-size:16px; background:var(--panel-raised); border:1px solid var(--line); color:var(--paper); border-radius:8px; padding:7px 8px; width:100%; }
   .row.needs-review .weight-input{border-color:var(--eartag);}
-  .row .review-note{
-    grid-column:2 / span 3;
-    font-size:11px;
-    color:var(--eartag);
-    font-style:italic;
-    margin-top:2px;
-  }
-  .row .time{
-    font-family:'IBM Plex Mono', monospace;
-    font-size:12px;
-    color:var(--muted);
-    text-align:right;
-  }
-  .row .del{
-    background:none;
-    border:none;
-    color:var(--muted);
-    font-size:16px;
-    cursor:pointer;
-    padding:4px;
-  }
+  .row .review-note{ grid-column:2 / span 2; font-size:11px; color:var(--eartag); font-style:italic; margin-top:2px; }
+  .row.with-id .review-note{ grid-column:2 / span 3; }
+  .row .time{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--muted); text-align:right; }
+  .row .del{ background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:4px; }
   .row .del:hover{color:var(--eartag);}
-  .empty-note{
-    color:var(--muted);
-    font-size:13px;
-    padding:6px 0;
-  }
-  .stats-bar{
-    display:flex;
-    justify-content:space-between;
-    font-family:'IBM Plex Mono', monospace;
-    font-size:13px;
-    color:var(--muted);
-    margin:14px 0 16px;
-    padding:0 2px;
-  }
+  .empty-note{ color:var(--muted); font-size:13px; padding:6px 0; }
+  .stats-bar{ display:flex; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--muted); margin:14px 0 16px; padding:0 2px; }
   .stats-bar b{color:var(--paper);}
-  .actions{
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-  }
-  .btn{
-    font-family:'IBM Plex Sans', sans-serif;
-    font-weight:600;
-    font-size:14px;
-    padding:13px 16px;
-    border-radius:10px;
-    border:none;
-    cursor:pointer;
-    text-align:center;
-  }
+  .actions{ display:flex; flex-direction:column; gap:10px; }
+  .btn{ font-family:'IBM Plex Sans', sans-serif; font-weight:600; font-size:14px; padding:13px 16px; border-radius:10px; border:none; cursor:pointer; text-align:center; }
   .btn-primary{background:var(--hivis); color:var(--ink);}
   .btn-ghost{background:var(--panel-raised); color:var(--paper); border:1px solid var(--line);}
   .btn-row{display:flex; gap:10px;}
   .btn-row .btn{flex:1;}
-  .manual-add{
-    display:none;
-    gap:8px;
-    margin-top:10px;
-  }
+  .manual-add{ display:none; gap:8px; margin-top:10px; }
   .manual-add.open{display:flex;}
-  .manual-add input{
-    flex:1;
-    font-family:'IBM Plex Mono', monospace;
-    font-size:15px;
-    background:var(--panel-raised);
-    border:1px solid var(--line);
-    color:var(--paper);
-    border-radius:8px;
-    padding:9px 10px;
-  }
-  .foot-note{
-    font-size:11px;
-    color:var(--muted);
-    text-align:center;
-    margin-top:18px;
-    line-height:1.5;
-    padding:0 8px;
-  }
-  .redo-link{
-    background:none;
-    border:none;
-    color:var(--hivis);
-    text-decoration:underline;
-    font-size:11px;
-    cursor:pointer;
-    padding:0;
-    margin-top:6px;
-    font-family:'IBM Plex Sans', sans-serif;
-  }
-  .check-overlay{
-    position:fixed;
-    inset:0;
-    background:var(--ink);
-    z-index:1000;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
-  }
+  .manual-add input{ flex:1; font-family:'IBM Plex Mono', monospace; font-size:15px; background:var(--panel-raised); border:1px solid var(--line); color:var(--paper); border-radius:8px; padding:9px 10px; }
+  .foot-note{ font-size:11px; color:var(--muted); text-align:center; margin-top:18px; line-height:1.5; padding:0 8px; }
+  .redo-link{ background:none; border:none; color:var(--hivis); text-decoration:underline; font-size:11px; cursor:pointer; padding:0; margin:0 8px; font-family:'IBM Plex Sans', sans-serif; }
+  .check-overlay{ position:fixed; inset:0; background:var(--ink); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; }
   .check-overlay.hidden{display:none;}
-  .check-panel{
-    width:100%;
-    max-width:420px;
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:26px 22px;
-    text-align:center;
-  }
+  .check-panel{ width:100%; max-width:420px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:26px 22px; text-align:center; }
   .check-panel .eyebrow{text-align:center;}
-  .check-title{
-    font-family:'Oswald', sans-serif;
-    font-size:24px;
-    text-transform:uppercase;
-    margin:4px 0 12px;
-  }
-  .check-step{
-    font-family:'IBM Plex Mono', monospace;
-    font-size:12px;
-    color:var(--muted);
-    margin-bottom:10px;
-  }
-  .check-dots{
-    display:flex;
-    justify-content:center;
-    gap:8px;
-    margin-bottom:18px;
-  }
-  .check-dots .dot{
-    width:9px;height:9px;
-    border-radius:50%;
-    background:var(--line);
-  }
+  .check-title{ font-family:'Oswald', sans-serif; font-size:24px; text-transform:uppercase; margin:4px 0 12px; }
+  .check-step{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--muted); margin-bottom:10px; }
+  .check-dots{ display:flex; justify-content:center; gap:8px; margin-bottom:18px; }
+  .check-dots .dot{ width:9px;height:9px; border-radius:50%; background:var(--line); }
   .check-dots .dot.done{background:var(--good);}
   .check-dots .dot.current{background:var(--hivis);}
   .check-confirm{margin-top:18px;}
-  .check-heard-text{
-    font-family:'IBM Plex Mono', monospace;
-    font-size:14px;
-    color:var(--paper);
-    margin-bottom:14px;
-    line-height:1.5;
-  }
+  .check-heard-text{ font-family:'IBM Plex Mono', monospace; font-size:14px; color:var(--paper); margin-bottom:14px; line-height:1.5; }
   .check-success{padding-top:4px;}
   .check-success p{color:var(--muted); font-size:14px; margin-bottom:16px;}
-  .check-success-icon{
-    width:56px;height:56px;
-    border-radius:50%;
-    background:var(--good);
-    color:var(--ink);
-    font-size:26px;
-    font-weight:700;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    margin:0 auto 14px;
-  }
+  .check-success-icon{ width:56px;height:56px; border-radius:50%; background:var(--good); color:var(--ink); font-size:26px; font-weight:700; display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
   .check-skip .foot-note{margin-top:0; margin-bottom:16px;}
-  .front-overlay{
-    position:fixed;
-    inset:0;
-    background:var(--ink);
-    z-index:1001;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
-  }
+  .front-overlay{ position:fixed; inset:0; background:var(--ink); z-index:1001; display:flex; align-items:center; justify-content:center; padding:20px; }
   .front-overlay.hidden{display:none;}
-  .front-field{
-    margin-bottom:18px;
-    text-align:left;
+  .front-panel{ max-height:92vh; overflow-y:auto; }
+  .front-field{ margin-bottom:18px; text-align:left; }
+  .front-field label{ display:block; font-family:'IBM Plex Sans', sans-serif; font-size:12px; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.06em; }
+  .front-field input[type="text"], .front-field input[type="date"], .front-field select{
+    width:100%; font-family:'IBM Plex Mono', monospace; font-size:15px; background:var(--panel-raised);
+    border:1px solid var(--line); color:var(--paper); border-radius:8px; padding:10px 11px;
   }
-  .front-field label{
-    display:block;
-    font-family:'IBM Plex Sans', sans-serif;
-    font-size:12px;
-    color:var(--muted);
-    margin-bottom:6px;
-    text-transform:uppercase;
-    letter-spacing:.06em;
+  .pill-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:2px; }
+  .add-site-row{ display:flex; gap:8px; margin-top:10px; }
+  .add-site-row input{ flex:1; min-width:0; font-family:'IBM Plex Mono', monospace; font-size:15px; background:var(--panel-raised); border:1px solid var(--line); color:var(--paper); border-radius:8px; padding:9px 10px; }
+  .range-hint{ font-size:11px; color:var(--muted); margin:8px 0 0; line-height:1.5; }
+  .voice-field-row{ display:flex; align-items:center; gap:8px; }
+  .voice-field-row .voice-field-wrap{ flex:1; }
+  .range-dash{ color:var(--muted); }
+  .voice-field-wrap{ position:relative; }
+  .voice-field-wrap input[type="text"]{
+    width:100%; font-family:'IBM Plex Mono', monospace; font-size:15px; background:var(--panel-raised);
+    border:1px solid var(--line); color:var(--paper); border-radius:8px; padding:10px 34px 10px 11px;
+    transition:border-color .2s ease, box-shadow .2s ease;
   }
-  .front-field input[type="text"],
-  .front-field input[type="date"]{
-    width:100%;
-    font-family:'IBM Plex Mono', monospace;
-    font-size:15px;
-    background:var(--panel-raised);
-    border:1px solid var(--line);
-    color:var(--paper);
-    border-radius:8px;
-    padding:10px 11px;
-  }
-  .range-presets{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    margin-top:2px;
-  }
-  .front-field select{
-    width:100%;
-    font-family:'IBM Plex Mono', monospace;
-    font-size:15px;
-    background:var(--panel-raised);
-    border:1px solid var(--line);
-    color:var(--paper);
-    border-radius:8px;
-    padding:10px 11px;
-  }
-  .add-site-row{
-    display:flex;
-    gap:8px;
-    margin-top:10px;
-  }
-  .add-site-row input{
-    flex:1;
-    min-width:0;
-    font-family:'IBM Plex Mono', monospace;
-    font-size:15px;
-    background:var(--panel-raised);
-    border:1px solid var(--line);
-    color:var(--paper);
-    border-radius:8px;
-    padding:9px 10px;
-  }
-  .range-hint{
-    font-size:11px;
-    color:var(--muted);
-    margin:8px 0 0;
-    line-height:1.5;
-  }
+  .voice-field-wrap input.field-listening{ border-color:var(--hivis); box-shadow:0 0 0 3px rgba(245,196,0,0.25); }
+  .voice-field-wrap .mic-glyph{ position:absolute; right:9px; top:50%; transform:translateY(-50%); font-size:14px; opacity:.5; pointer-events:none; }
+  .instructions-overlay{ position:fixed; inset:0; background:var(--ink); z-index:1002; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .instructions-overlay.hidden{display:none;}
+  .instructions-panel{ max-height:88vh; overflow-y:auto; text-align:left; }
+  .instructions-panel .eyebrow, .instructions-panel .check-title{ text-align:center; }
+  .instructions-body h3{ font-family:'Oswald', sans-serif; font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--hivis); margin:18px 0 6px; }
+  .instructions-body h3:first-child{margin-top:4px;}
+  .instructions-body p, .instructions-body li{ font-size:13px; color:var(--paper); line-height:1.6; margin:4px 0; }
+  .instructions-body ul{ padding-left:18px; margin:4px 0; }
+  .batch-row{ display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid var(--line); }
+  .batch-row:last-child{border-bottom:none;}
+  .batch-info{flex:1; min-width:0;}
+  .batch-name{ font-family:'IBM Plex Mono', monospace; font-size:14px; color:var(--paper); word-break:break-word; }
+  .batch-meta{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .batch-row .btn{ padding:8px 12px; font-size:12px; white-space:nowrap; }
 </style>
 </head>
 <body>
 
 <div class="front-overlay" id="frontOverlay">
-  <div class="check-panel">
+  <div class="check-panel front-panel">
     <div class="eyebrow">Session setup</div>
     <h2 class="check-title">New Weigh Session</h2>
 
@@ -507,19 +174,47 @@
     </div>
 
     <div class="front-field">
-      <label>Anticipated weight range</label>
-      <div class="range-presets" id="rangePresets">
-        <button type="button" class="mode-btn" data-min="0" data-max="8" data-label="Weaning">Weaning 0–8 kg</button>
-        <button type="button" class="mode-btn" data-min="10" data-max="40" data-label="Nursery">Nursery 10–40 kg</button>
-        <button type="button" class="mode-btn active" data-min="80" data-max="120" data-label="Finisher">Finisher 80–120 kg</button>
-        <button type="button" class="mode-btn" data-min="100" data-max="140" data-label="Heavy Finisher">Heavy Finisher 100–140 kg</button>
+      <label>Add Anticipated Range</label>
+      <div class="voice-field-row">
+        <div class="voice-field-wrap">
+          <input type="text" id="rangeMinInput" inputmode="decimal" placeholder="Min (kg)">
+          <span class="mic-glyph">&#127908;</span>
+        </div>
+        <span class="range-dash">&ndash;</span>
+        <div class="voice-field-wrap">
+          <input type="text" id="rangeMaxInput" inputmode="decimal" placeholder="Max (kg)">
+          <span class="mic-glyph">&#127908;</span>
+        </div>
       </div>
-      <p class="range-hint">We expect around 80% of weighed pigs to fall inside this range — the tally board will track that as you go.</p>
+      <p class="range-hint">Tap a box and say the number, or type it. We expect around 80% of weighed pigs to land inside this range.</p>
+    </div>
+
+    <div class="front-field">
+      <label>Comments</label>
+      <div class="voice-field-wrap">
+        <input type="text" id="comment1Input" placeholder="Comment, i.e. Batch (incl in file name)">
+        <span class="mic-glyph">&#127908;</span>
+      </div>
+      <div class="voice-field-wrap" style="margin-top:8px;">
+        <input type="text" id="comment2Input" placeholder="Comment, i.e. Batch or Group">
+        <span class="mic-glyph">&#127908;</span>
+      </div>
+    </div>
+
+    <div class="front-field">
+      <label>Include Individual I.D.</label>
+      <div class="pill-row" id="idToggleRow">
+        <button type="button" class="mode-btn active" data-val="no">No</button>
+        <button type="button" class="mode-btn" data-val="yes">Yes</button>
+      </div>
+      <p class="range-hint">When on: say the I.D., then "over" &mdash; then the weight, then "over", for each pig.</p>
     </div>
 
     <div class="status-line" id="frontStatusLine"></div>
 
-    <button class="btn btn-primary" id="frontContinueBtn" style="width:100%; margin-top:6px;">Continue to voice check</button>
+    <button class="btn btn-primary" id="continueCheckBtn" style="width:100%; margin-top:6px;">Continue to Voice Check and Proceed</button>
+    <button class="btn btn-ghost" id="skipCheckBtn" style="width:100%; margin-top:10px;">Skip Voice Check and Proceed</button>
+    <button class="btn btn-ghost" id="instructionsBtn" style="width:100%; margin-top:10px;">Instructions</button>
   </div>
 </div>
 
@@ -534,7 +229,7 @@
     </div>
 
     <div class="readout-box" id="checkReadoutBox">
-      <div class="readout"><span id="checkReadoutValue">—.—</span><span class="unit">kg</span></div>
+      <div class="readout"><span id="checkReadoutValue">&mdash;.&mdash;</span><span class="unit">kg</span></div>
       <div class="heard-line" id="checkHeardLine">Tap the mic and say a weight, e.g. "forty two kilos"</div>
     </div>
 
@@ -557,15 +252,63 @@
     </div>
 
     <div class="check-success" id="checkSuccessWrap" style="display:none;">
-      <div class="check-success-icon">✓</div>
-      <p>3 for 3 — you're set.</p>
+      <div class="check-success-icon">&#10003;</div>
+      <p>3 for 3 &mdash; you're set.</p>
       <button class="btn btn-primary" id="checkStartBtn">Start weighing</button>
     </div>
 
     <div class="check-skip" id="checkSkipWrap" style="display:none;">
-      <p class="foot-note">Your browser doesn't support voice input, so the check is skipped — you can still add weights manually once you're in.</p>
+      <p class="foot-note">Your browser doesn't support voice input, so the check is skipped &mdash; you can still add weights manually once you're in.</p>
       <button class="btn btn-ghost" id="checkSkipBtn">Continue</button>
     </div>
+  </div>
+</div>
+
+<div class="instructions-overlay hidden" id="instructionsOverlay">
+  <div class="check-panel instructions-panel">
+    <div class="eyebrow">Help</div>
+    <h2 class="check-title">Instructions</h2>
+    <div class="instructions-body">
+      <h3>Each session</h3>
+      <p>Pick your Site, confirm the Date, and set the anticipated weight range &mdash; tap a box and say the number, or just type it. Your settings for that site (range, comments, and the Individual I.D. option) are remembered automatically next time you pick it.</p>
+
+      <h3>Voice check</h3>
+      <p>A short 3-weight check confirms your phone is hearing you clearly before you start a session. If you're confident it's working fine, tap "Skip Voice Check and Proceed" instead.</p>
+
+      <h3>Recording weights</h3>
+      <p>Say the weight, then "over" &mdash; like a radio call.</p>
+      <p>If "Include Individual I.D." is switched on: say the I.D., then "over", then the weight, then "over" &mdash; two steps for each pig.</p>
+      <p>Prefer it to log automatically after a short pause instead of saying "over"? Switch to "Auto-log on pause" (this isn't available when Individual I.D. is on, since two steps need a clear signal between them).</p>
+
+      <h3>Fixing mistakes</h3>
+      <p>Every entry on the tally board can be edited or deleted &mdash; just tap a figure to correct it. Rows outlined in orange were flagged as a likely mishearing or outside your usual range; check those before exporting.</p>
+
+      <h3>Working without a signal</h3>
+      <p>Typed weights, editing, saving batches, and exporting all work with no signal at all. Voice recognition itself needs at least a weak connection to work reliably \u2014 if you're somewhere with none, switch to typing weights in manually; nothing is lost, and it all exports the same way later.</p>
+
+      <h3>Finishing up</h3>
+      <p>"Export to Excel" saves a spreadsheet with your Site, Date, range, and comments included at the top. It saves to wherever your phone's browser saves downloads &mdash; usually a Downloads folder. To be asked where to save each time (e.g. a specific folder), go to iPhone Settings &rarr; Safari &rarr; Downloads, and set it to "Ask".</p>
+      <p>"New Mob" clears the tally board and takes you back to Session Setup for the next batch.</p>
+
+      <h3>Tips</h3>
+      <ul>
+        <li>Speak clearly, and pause briefly before and after each number.</li>
+        <li>Chrome tends to recognise voice a little more reliably than Safari, though both work.</li>
+        <li>If the mic stops listening on its own, just tap it again &mdash; that's a normal iPhone quirk, not a fault.</li>
+      </ul>
+    </div>
+    <button class="btn btn-primary" id="closeInstructionsBtn" style="width:100%; margin-top:16px;">Close</button>
+  </div>
+</div>
+
+<div class="instructions-overlay hidden" id="batchesOverlay">
+  <div class="check-panel instructions-panel">
+    <div class="eyebrow">Local storage</div>
+    <h2 class="check-title">Saved Batches</h2>
+    <p class="range-hint" style="margin-bottom:14px;">A batch is saved here automatically each time you tap "New Mob". They stay here, ready to export, even without a signal.</p>
+    <button class="btn btn-primary" id="exportAllBatchesBtn" style="width:100%; margin-bottom:14px;">Export All Batches</button>
+    <div id="batchListBody"></div>
+    <button class="btn btn-ghost" id="closeBatchesBtn" style="width:100%; margin-top:16px;">Close</button>
   </div>
 </div>
 
@@ -574,21 +317,17 @@
   <div class="header">
     <div>
       <div class="eyebrow" id="dateLabel">Weigh day</div>
-      <h1 class="title">Pig Weigh Station</h1>
+      <h1 class="title">FarmTalk Mod1</h1>
+      <div class="session-note" id="sessionNote" style="display:none;"></div>
     </div>
     <div class="tally-badge">HEAD <span id="headBadge">0</span></div>
   </div>
   <div class="stripe"></div>
 
   <div class="panel">
-    <div class="tag-bar">
-      <label for="tagInput">Tag / Pen</label>
-      <input type="text" id="tagInput" inputmode="numeric" placeholder="e.g. 15" autocomplete="off">
-      <label class="auto-inc-label"><input type="checkbox" id="autoIncCheckbox" checked> auto +1</label>
-    </div>
     <div class="readout-wrap">
       <div class="readout-box" id="readoutBox">
-        <div class="readout"><span id="readoutValue">—.—</span><span class="unit">kg</span></div>
+        <div class="readout"><span id="readoutValue">&mdash;.&mdash;</span><span class="unit">kg</span></div>
         <div class="heard-line" id="heardLine">Tap the mic to start</div>
       </div>
 
@@ -615,6 +354,7 @@
     <div class="board-title">Tally board</div>
     <div id="boardBody"></div>
     <div class="manual-add" id="manualAdd">
+      <input type="text" id="manualIdInput" placeholder="I.D." style="display:none; max-width:70px;">
       <input type="text" inputmode="decimal" placeholder="e.g. 42.5" id="manualInput">
       <button class="btn btn-ghost" id="manualConfirm">Add</button>
     </div>
@@ -622,8 +362,8 @@
 
   <div class="stats-bar">
     <span>Head: <b id="statHead">0</b></span>
-    <span>Avg: <b id="statAvg">—</b> kg</span>
-    <span>In range: <b id="statInRange">—</b></span>
+    <span>Avg: <b id="statAvg">&mdash;</b> kg</span>
+    <span>In range: <b id="statInRange">&mdash;</b></span>
   </div>
 
   <div class="actions">
@@ -632,11 +372,12 @@
       <button class="btn btn-primary" id="exportBtn">Export to Excel</button>
       <button class="btn btn-ghost" id="clearBtn">New mob</button>
     </div>
+    <button class="btn btn-ghost" id="batchesBtn">Saved Batches (<span id="batchesCount">0</span>)</button>
   </div>
 
   <div class="foot-note">
-    Voice input uses your phone's browser speech engine (works best in Chrome). Farm noise and mixed accents can cause the odd misheard number — check the tally board and tap any figure to fix it before exporting.
-    <br><button class="redo-link" id="redoCheckBtn">Redo voice check</button>
+    Voice input uses your phone's browser speech engine (works best in Chrome). Farm noise and mixed accents can cause the odd misheard number &mdash; check the tally board and tap any figure to fix it before exporting.
+    <br><button class="redo-link" id="redoCheckBtn">Redo voice check</button><button class="redo-link" id="instructionsBtn2">Instructions</button>
   </div>
 
 </div>
@@ -653,28 +394,38 @@
   const headBadge = document.getElementById('headBadge');
   const statHead = document.getElementById('statHead');
   const statAvg = document.getElementById('statAvg');
+  const statInRange = document.getElementById('statInRange');
   const modeOverBtn = document.getElementById('modeOverBtn');
   const modePauseBtn = document.getElementById('modePauseBtn');
   const toggleManualBtn = document.getElementById('toggleManualBtn');
   const manualAdd = document.getElementById('manualAdd');
   const manualInput = document.getElementById('manualInput');
+  const manualIdInput = document.getElementById('manualIdInput');
   const manualConfirm = document.getElementById('manualConfirm');
   const exportBtn = document.getElementById('exportBtn');
   const clearBtn = document.getElementById('clearBtn');
   const dateLabel = document.getElementById('dateLabel');
-  const tagInput = document.getElementById('tagInput');
-  const autoIncCheckbox = document.getElementById('autoIncCheckbox');
-  const statInRange = document.getElementById('statInRange');
+  const sessionNoteEl = document.getElementById('sessionNote');
+  const batchesBtn = document.getElementById('batchesBtn');
+  const batchesCount = document.getElementById('batchesCount');
+  const batchesOverlay = document.getElementById('batchesOverlay');
+  const batchListBody = document.getElementById('batchListBody');
+  const exportAllBatchesBtn = document.getElementById('exportAllBatchesBtn');
+  const closeBatchesBtn = document.getElementById('closeBatchesBtn');
 
   let entries = [];
+  let batches = [];
   let isListening = false;
   let mode = 'over'; // 'over' | 'pause'
   let finalBuffer = '';
   let recognition = null;
 
-  // Anticipated range set from the front screen
-  let EXPECTED_RANGE = {min:80, max:120};
-  let sessionRangeLabel = '';
+  let EXPECTED_RANGE = null;
+  let INCLUDE_ID = false;
+  let sessionComment1 = '';
+  let sessionComment2 = '';
+  let awaitingStage = 'weight'; // 'id' | 'weight' -- only meaningful when INCLUDE_ID is true
+  let pendingAnimalId = null;
 
   // --- front screen (session setup) refs ---
   const frontOverlay = document.getElementById('frontOverlay');
@@ -683,13 +434,24 @@
   const newSiteInput = document.getElementById('newSiteInput');
   const addSiteConfirmBtn = document.getElementById('addSiteConfirmBtn');
   const dateInputField = document.getElementById('dateInputField');
-  const rangePresetButtons = document.querySelectorAll('#rangePresets .mode-btn');
+  const rangeMinInput = document.getElementById('rangeMinInput');
+  const rangeMaxInput = document.getElementById('rangeMaxInput');
+  const comment1Input = document.getElementById('comment1Input');
+  const comment2Input = document.getElementById('comment2Input');
+  const idToggleButtons = document.querySelectorAll('#idToggleRow .mode-btn');
   const frontStatusLine = document.getElementById('frontStatusLine');
-  const frontContinueBtn = document.getElementById('frontContinueBtn');
+  const continueCheckBtn = document.getElementById('continueCheckBtn');
+  const skipCheckBtn = document.getElementById('skipCheckBtn');
   const DEFAULT_SITES = ['Pittsworth Finisher'];
   let customSites = [];
   let sessionSite = '';
   let sessionDateDisplay = '';
+
+  // --- instructions overlay refs ---
+  const instructionsOverlay = document.getElementById('instructionsOverlay');
+  const instructionsBtn = document.getElementById('instructionsBtn');
+  const instructionsBtn2 = document.getElementById('instructionsBtn2');
+  const closeInstructionsBtn = document.getElementById('closeInstructionsBtn');
 
   // --- voice check overlay refs ---
   const checkOverlay = document.getElementById('checkOverlay');
@@ -710,32 +472,44 @@
   const CHECK_TOTAL = 3;
   let checkStep = 0;
   let checkListening = false;
-  let pendingCheckWeight = null;
-  let pendingCheckRaw = '';
 
   dateInputField.value = new Date().toISOString().slice(0,10);
 
   // ---------- storage ----------
-  async function persist(){
+  // Falls back to localStorage when window.storage isn't available (i.e. once this
+  // is deployed as a real webpage, outside Claude's own preview environment).
+  async function storageGet(key){
+    try{
+      if(window.storage && window.storage.get){
+        const res = await window.storage.get(key);
+        return res ? res.value : null;
+      }
+    }catch(e){}
+    try{ return window.localStorage.getItem(key); }catch(e){}
+    return null;
+  }
+  async function storageSet(key, value){
     try{
       if(window.storage && window.storage.set){
-        await window.storage.set('pig-weigh-entries', JSON.stringify(entries), false);
+        await window.storage.set(key, value, false);
+        return;
       }
-    }catch(e){ /* storage not available, continue in-memory only */ }
+    }catch(e){}
+    try{ window.localStorage.setItem(key, value); }catch(e){}
+  }
+
+  async function persist(){
+    await storageSet('pig-weigh-entries', JSON.stringify(entries));
   }
   async function loadPersisted(){
     try{
-      if(window.storage && window.storage.get){
-        const res = await window.storage.get('pig-weigh-entries');
-        if(res && res.value){
-          entries = JSON.parse(res.value) || [];
-        }
-      }
+      const val = await storageGet('pig-weigh-entries');
+      if(val) entries = JSON.parse(val) || [];
     }catch(e){ entries = []; }
     renderBoard();
   }
 
-  // ---------- number parsing ----------
+  // ---------- number / id parsing ----------
   const onesMap = {zero:0,oh:0,one:1,two:2,to:2,too:2,three:3,four:4,for:4,five:5,six:6,seven:7,eight:8,nine:9};
   const teensMap = {ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19};
   const tensMap = {twenty:20,thirty:30,forty:40,fourty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
@@ -748,16 +522,8 @@
       if(w === 'point'){
         i++;
         let decStr = '';
-        while(i < tokens.length && onesMap.hasOwnProperty(tokens[i])){
-          decStr += onesMap[tokens[i]];
-          i++;
-        }
-        if(decStr){
-          total += current;
-          current = 0;
-          total = parseFloat(total + '.' + decStr);
-          foundAny = true;
-        }
+        while(i < tokens.length && onesMap.hasOwnProperty(tokens[i])){ decStr += onesMap[tokens[i]]; i++; }
+        if(decStr){ total += current; current = 0; total = parseFloat(total + '.' + decStr); foundAny = true; }
         continue;
       }
       if(w === 'and'){ i++; continue; }
@@ -777,14 +543,26 @@
     let t = ' ' + rawText.toLowerCase().trim() + ' ';
     const phraseFillers = ['give or take','call it','bang on','straight up','a tick over','a squeak under',"she's about",'roughly','approximately','approx'];
     phraseFillers.forEach(p => { t = t.split(p).join(' '); });
-
     const digitMatch = t.match(/(\d+(?:\.\d+)?)/);
     if(digitMatch) return parseFloat(digitMatch[1]);
-
     const fillers = ['kilograms','kilogram','kilos','kilo','kgs','kg','about','ish','weighs','weighing','weight','pig','pigs','sow','boar','porker','shes',"she's",'hes',"he's",'its',"it's",'is','was','the','thats',"that's",'even','flat','she','he'];
     const tokens = t.trim().split(/\s+/).filter(w => w && !fillers.includes(w));
     if(tokens.length === 0) return null;
     return wordsToNumber(tokens);
+  }
+
+  function parseSpokenId(text){
+    let t = (text || '').toLowerCase().trim();
+    const digitGroups = t.match(/\d+/g);
+    if(digitGroups) return digitGroups.join('');
+    const digitWordMap = {zero:'0',oh:'0',one:'1',two:'2',to:'2',too:'2',three:'3',four:'4',for:'4',five:'5',six:'6',seven:'7',eight:'8',nine:'9'};
+    const tokens = t.split(/\s+/).filter(Boolean);
+    if(tokens.length && tokens.every(tok => digitWordMap.hasOwnProperty(tok))){
+      return tokens.map(tok => digitWordMap[tok]).join('');
+    }
+    const asNumber = parseWeight(t);
+    if(asNumber !== null && !isNaN(asNumber)) return String(asNumber);
+    return t || null;
   }
 
   // ---------- entries ----------
@@ -797,34 +575,27 @@
     }
     return null;
   }
-  function addEntry(weight, raw){
+  function addEntry(weight, raw, animalId){
     const reviewReason = computeReviewReason(weight);
-    const tag = tagInput ? tagInput.value.trim() : '';
     entries.push({
-      id: 'e' + Date.now() + Math.random().toString(36).slice(2,6),
+      uid: 'e' + Date.now() + Math.random().toString(36).slice(2,6),
       weight: weight,
-      tag: tag,
+      animalId: animalId || '',
       time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
       raw: raw,
       reviewReason: reviewReason
     });
     persist();
     renderBoard();
-
-    if(autoIncCheckbox && autoIncCheckbox.checked && tag && /^\d+$/.test(tag)){
-      tagInput.value = String(parseInt(tag, 10) + 1);
-    }
   }
-  function deleteEntry(id){
-    entries = entries.filter(e => e.id !== id);
+  function deleteEntry(uid){
+    entries = entries.filter(e => e.uid !== uid);
     persist();
     renderBoard();
   }
-  function recomputeReviewReason(e){
-    e.reviewReason = computeReviewReason(e.weight);
-  }
-  function updateEntryWeight(id, val){
-    const e = entries.find(e => e.id === id);
+  function recomputeReviewReason(e){ e.reviewReason = computeReviewReason(e.weight); }
+  function updateEntryWeight(uid, val){
+    const e = entries.find(e => e.uid === uid);
     if(!e) return;
     const n = parseFloat(val);
     e.weight = isNaN(n) ? null : n;
@@ -832,10 +603,10 @@
     persist();
     renderBoard();
   }
-  function updateEntryTag(id, val){
-    const e = entries.find(e => e.id === id);
+  function updateEntryAnimalId(uid, val){
+    const e = entries.find(e => e.uid === uid);
     if(!e) return;
-    e.tag = val.trim();
+    e.animalId = val.trim();
     persist();
     renderBoard();
   }
@@ -847,46 +618,43 @@
     } else {
       entries.forEach((e, idx) => {
         const row = document.createElement('div');
-        row.className = 'row' + (e.reviewReason ? ' needs-review' : '');
+        row.className = 'row' + (INCLUDE_ID ? ' with-id' : '') + (e.reviewReason ? ' needs-review' : '');
         let noteHtml = '';
         if(e.reviewReason === 'no-number'){
-          noteHtml = `<div class="review-note">heard: "${e.raw.replace(/"/g,'')}"</div>`;
+          noteHtml = '<div class="review-note">heard: "' + e.raw.replace(/"/g,'') + '"</div>';
         } else if(e.reviewReason === 'out-of-range'){
-          noteHtml = `<div class="review-note">flagged: ${e.weight}kg is outside your usual range — double-check</div>`;
+          noteHtml = '<div class="review-note">flagged: ' + e.weight + 'kg is outside your usual range &mdash; double-check</div>';
         }
-        row.innerHTML = `
-          <div class="num">${String(idx+1).padStart(2,'0')}</div>
-          <input class="weight-input" type="text" inputmode="numeric" value="${e.tag ? e.tag.replace(/"/g,'') : ''}" placeholder="tag" data-id="${e.id}" data-field="tag">
-          <input class="weight-input" type="text" inputmode="decimal" value="${e.weight === null ? '' : e.weight}" placeholder="kg" data-id="${e.id}" data-field="weight">
-          <div class="time">${e.time}</div>
-          <button class="del" data-id="${e.id}" aria-label="Delete entry">✕</button>
-          ${noteHtml}
-        `;
+        const idCell = INCLUDE_ID ? ('<input class="weight-input" type="text" value="' + (e.animalId ? String(e.animalId).replace(/"/g,'') : '') + '" placeholder="I.D." data-uid="' + e.uid + '" data-field="animalId">') : '';
+        row.innerHTML =
+          '<div class="num">' + String(idx+1).padStart(2,'0') + '</div>' +
+          idCell +
+          '<input class="weight-input" type="text" inputmode="decimal" value="' + (e.weight === null ? '' : e.weight) + '" placeholder="kg" data-uid="' + e.uid + '" data-field="weight">' +
+          '<div class="time">' + e.time + '</div>' +
+          '<button class="del" data-uid="' + e.uid + '" aria-label="Delete entry">&#10005;</button>' +
+          noteHtml;
         boardBody.appendChild(row);
       });
     }
 
     boardBody.querySelectorAll('.weight-input').forEach(inp => {
       inp.addEventListener('change', () => {
-        if(inp.dataset.field === 'tag'){
-          updateEntryTag(inp.dataset.id, inp.value);
-        } else {
-          updateEntryWeight(inp.dataset.id, inp.value);
-        }
+        if(inp.dataset.field === 'animalId') updateEntryAnimalId(inp.dataset.uid, inp.value);
+        else updateEntryWeight(inp.dataset.uid, inp.value);
       });
     });
     boardBody.querySelectorAll('.del').forEach(btn => {
-      btn.addEventListener('click', () => deleteEntry(btn.dataset.id));
+      btn.addEventListener('click', () => deleteEntry(btn.dataset.uid));
     });
 
     const validWeights = entries.map(e => e.weight).filter(w => w !== null && !isNaN(w));
     headBadge.textContent = entries.length;
     statHead.textContent = entries.length;
-    statAvg.textContent = validWeights.length ? (validWeights.reduce((a,b)=>a+b,0)/validWeights.length).toFixed(1) : '—';
+    statAvg.textContent = validWeights.length ? (validWeights.reduce((a,b)=>a+b,0)/validWeights.length).toFixed(1) : '\u2014';
 
     const stats = computeStats();
     if(stats.pct === null){
-      statInRange.textContent = '—';
+      statInRange.textContent = '\u2014';
       statInRange.style.color = '';
     } else {
       statInRange.textContent = stats.pct + '%';
@@ -912,23 +680,46 @@
   }
   function showReadout(text){
     const guess = text ? parseWeight(text) : null;
-    readoutValue.textContent = guess !== null && guess !== undefined ? guess : '—.—';
+    readoutValue.textContent = (guess !== null && guess !== undefined) ? guess : '\u2014.\u2014';
+  }
+
+  function resetStage(){
+    awaitingStage = INCLUDE_ID ? 'id' : 'weight';
+    pendingAnimalId = null;
+  }
+  function stagePromptText(){
+    if(mode === 'pause') return 'Listening\u2026 pause after each weight';
+    if(!INCLUDE_ID) return 'Listening\u2026 say weight, then "over"';
+    return awaitingStage === 'id' ? 'Listening\u2026 say the I.D., then "over"' : 'Now say the weight, then "over"';
   }
 
   function processUtterance(rawText){
     const cleaned = rawText.trim();
     if(!cleaned) return;
+
+    if(INCLUDE_ID && awaitingStage === 'id'){
+      const idVal = parseSpokenId(cleaned) || cleaned;
+      pendingAnimalId = idVal;
+      awaitingStage = 'weight';
+      flash('flash-good');
+      heardLine.textContent = 'I.D. ' + pendingAnimalId + ' \u2014 now say the weight, then "over"';
+      readoutValue.textContent = '\u2014.\u2014';
+      return;
+    }
+
     const weight = parseWeight(cleaned);
+    const idForEntry = INCLUDE_ID ? pendingAnimalId : null;
     if(weight !== null && !isNaN(weight)){
-      addEntry(weight, cleaned);
+      addEntry(weight, cleaned, idForEntry);
       flash('flash-good');
       heardLine.textContent = 'Logged: "' + cleaned + '"';
     } else {
-      addEntry(null, cleaned);
+      addEntry(null, cleaned, idForEntry);
       flash('flash-review');
-      heardLine.textContent = 'Couldn\'t catch a number — check the tally board';
+      heardLine.textContent = 'Couldn\'t catch a number \u2014 check the tally board';
     }
-    readoutValue.textContent = '—.—';
+    if(INCLUDE_ID){ awaitingStage = 'id'; pendingAnimalId = null; }
+    readoutValue.textContent = '\u2014.\u2014';
   }
 
   // ---------- speech recognition ----------
@@ -941,7 +732,7 @@
     }
     const isiOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
     if(isiOS){
-      statusLine.textContent = 'On iPhone (Safari), it may pause listening after each reading — just tap the mic again if it stops.';
+      statusLine.textContent = 'On iPhone (Safari), it may pause listening after each reading \u2014 just tap the mic again if it stops.';
     }
     recognition = new SpeechRecognition();
     recognition.continuous = true;
@@ -953,15 +744,9 @@
       for(let i = event.resultIndex; i < event.results.length; i++){
         const transcript = event.results[i][0].transcript;
         if(event.results[i].isFinal){
-          if(mode === 'pause'){
-            processUtterance(transcript);
-          } else {
-            finalBuffer += ' ' + transcript;
-            checkForTrigger();
-          }
-        } else {
-          interim += transcript;
-        }
+          if(mode === 'pause'){ processUtterance(transcript); }
+          else { finalBuffer += ' ' + transcript; checkForTrigger(); }
+        } else { interim += transcript; }
       }
       if(interim){
         heardLine.textContent = 'hearing: "' + interim.trim() + '"';
@@ -974,20 +759,18 @@
 
     recognition.onerror = (event) => {
       if(event.error === 'not-allowed' || event.error === 'service-not-allowed'){
-        statusLine.textContent = 'Microphone access blocked — allow it in your browser settings.';
+        statusLine.textContent = 'Microphone access blocked \u2014 allow it in your browser settings.';
         statusLine.classList.add('warn');
         stopListening();
       } else if(event.error === 'no-speech'){
         // ignore, keep listening
       } else {
-        statusLine.textContent = 'Voice hiccup (' + event.error + ') — still listening.';
+        statusLine.textContent = 'Voice hiccup (' + event.error + ') \u2014 still listening.';
       }
     };
 
     recognition.onend = () => {
-      if(isListening){
-        try{ recognition.start(); }catch(e){ /* already running */ }
-      }
+      if(isListening){ try{ recognition.start(); }catch(e){ /* already running */ } }
     };
   }
 
@@ -1003,6 +786,7 @@
 
   function startListening(){
     if(!recognition) return;
+    resetStage();
     try{ recognition.start(); }catch(e){ /* ignore double-start */ }
     isListening = true;
     finalBuffer = '';
@@ -1011,7 +795,7 @@
     micBtn.setAttribute('aria-label','Stop listening');
     statusLine.textContent = '';
     statusLine.classList.remove('warn');
-    heardLine.textContent = mode === 'over' ? 'Listening… say weight, then "over"' : 'Listening… pause after each weight';
+    heardLine.textContent = stagePromptText();
   }
   function stopListening(){
     isListening = false;
@@ -1020,12 +804,10 @@
     readoutBox.classList.remove('listening');
     micBtn.setAttribute('aria-label','Start listening');
     heardLine.textContent = 'Tap the mic to start';
-    readoutValue.textContent = '—.—';
+    readoutValue.textContent = '\u2014.\u2014';
   }
 
-  micBtn.addEventListener('click', () => {
-    if(isListening) stopListening(); else startListening();
-  });
+  micBtn.addEventListener('click', () => { if(isListening) stopListening(); else startListening(); });
 
   modeOverBtn.addEventListener('click', () => {
     mode = 'over';
@@ -1034,6 +816,7 @@
     finalBuffer = '';
   });
   modePauseBtn.addEventListener('click', () => {
+    if(modePauseBtn.disabled) return;
     mode = 'pause';
     modePauseBtn.classList.add('active');
     modeOverBtn.classList.remove('active');
@@ -1047,62 +830,184 @@
   function submitManual(){
     const val = parseFloat(manualInput.value);
     if(!isNaN(val)){
-      addEntry(val, 'manual entry');
+      const idVal = INCLUDE_ID ? manualIdInput.value.trim() : '';
+      addEntry(val, 'manual entry', idVal);
       manualInput.value = '';
+      manualIdInput.value = '';
     }
   }
   manualConfirm.addEventListener('click', submitManual);
   manualInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') submitManual(); });
 
+  // ---------- batch naming & storage ----------
+  function formatDateDDMMYYYY(dateStr){
+    const parts = (dateStr || '').split('-');
+    if(parts.length !== 3) return dateStr || '';
+    return parts[2] + parts[1] + parts[0];
+  }
+  function sanitizeFilename(s){
+    return (s || 'batch').replace(/[\/\\:*?"<>|]/g, '').trim() || 'batch';
+  }
+  function buildBatchName(dateStr, comment1){
+    const d = formatDateDDMMYYYY(dateStr);
+    const c = (comment1 || '').trim();
+    return c ? (d + ' ' + c) : d;
+  }
+
+  async function loadBatches(){
+    try{
+      const val = await storageGet('farmtalk-batches');
+      if(val) batches = JSON.parse(val) || [];
+    }catch(e){ batches = []; }
+    updateBatchesBadge();
+  }
+  async function saveBatches(){
+    await storageSet('farmtalk-batches', JSON.stringify(batches));
+    updateBatchesBadge();
+  }
+  function updateBatchesBadge(){
+    batchesCount.textContent = batches.length;
+  }
+
+  async function archiveCurrentBatch(){
+    if(entries.length === 0) return;
+    const baseName = buildBatchName(dateInputField.value, sessionComment1);
+    let uniqueName = baseName;
+    let counter = 2;
+    const existingNames = batches.map(b => b.name);
+    while(existingNames.includes(uniqueName)){
+      uniqueName = baseName + ' (' + counter + ')';
+      counter++;
+    }
+    batches.push({
+      id: 'b' + Date.now() + Math.random().toString(36).slice(2,6),
+      name: uniqueName,
+      site: sessionSite,
+      dateDisplay: sessionDateDisplay,
+      comment1: sessionComment1,
+      comment2: sessionComment2,
+      includeId: INCLUDE_ID,
+      range: EXPECTED_RANGE,
+      entries: entries.slice(),
+      createdAt: Date.now()
+    });
+    await saveBatches();
+  }
+
   clearBtn.addEventListener('click', () => {
     if(entries.length === 0) return;
-    if(confirm('Start a new mob? This clears the current tally board (export first if you need it).')){
-      entries = [];
-      persist();
-      renderBoard();
-      showFrontScreen();
+    if(confirm('Save this batch (' + entries.length + ' pigs) and start a new mob?')){
+      archiveCurrentBatch().then(() => {
+        entries = [];
+        persist();
+        renderBoard();
+        showFrontScreen();
+      });
     }
   });
 
-  function slugify(s){
-    return (s || 'site').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'site';
-  }
-
-  exportBtn.addEventListener('click', () => {
-    if(entries.length === 0){
-      statusLine.textContent = 'No weights recorded yet.';
-      return;
-    }
+  // ---------- shared workbook builder ----------
+  function downloadBatchWorkbook(opts){
     if(typeof XLSX === 'undefined'){
-      statusLine.textContent = 'Export library failed to load — check your connection and try again.';
+      statusLine.textContent = 'Export library failed to load \u2014 check your connection and try again.';
       statusLine.classList.add('warn');
-      return;
+      return false;
     }
-    const rangeDisplay = sessionRangeLabel || (EXPECTED_RANGE ? (EXPECTED_RANGE.min + '–' + EXPECTED_RANGE.max + ' kg') : '');
-    const stats = computeStats();
     const aoa = [
-      ['Site', sessionSite || ''],
-      ['Date', sessionDateDisplay || ''],
-      ['Anticipated range', rangeDisplay],
-      ['In expected range', stats.pct === null ? '' : stats.pct + '% (target 80%)'],
-      [],
-      ['#','Tag/Pen','Weight (kg)','Time','Notes']
+      ['Site', opts.site || ''],
+      ['Date', opts.dateDisplay || ''],
+      ['Anticipated range', opts.rangeDisplay || ''],
+      ['In expected range', opts.pctText || '']
     ];
-    entries.forEach((e, idx) => {
+    if(opts.comment1) aoa.push(['Comment 1', opts.comment1]);
+    if(opts.comment2) aoa.push(['Comment 2', opts.comment2]);
+    aoa.push([]);
+    aoa.push(opts.includeId ? ['#','I.D.','Weight (kg)','Time','Notes'] : ['#','Weight (kg)','Time','Notes']);
+    opts.entries.forEach((e, idx) => {
       let note = '';
       if(e.reviewReason === 'no-number') note = 'heard: ' + e.raw;
       else if(e.reviewReason === 'out-of-range') note = 'flagged: outside usual range';
-      aoa.push([idx + 1, e.tag || '', e.weight === null ? '' : e.weight, e.time, note]);
+      if(opts.includeId) aoa.push([idx + 1, e.animalId || '', e.weight === null ? '' : e.weight, e.time, note]);
+      else aoa.push([idx + 1, e.weight === null ? '' : e.weight, e.time, note]);
     });
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [{wch:16},{wch:9},{wch:12},{wch:10},{wch:28}];
+    ws['!cols'] = opts.includeId ? [{wch:16},{wch:10},{wch:12},{wch:10},{wch:28}] : [{wch:16},{wch:12},{wch:10},{wch:28}];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Pig Weights');
-    const dateForFile = dateInputField.value || new Date().toISOString().slice(0,10);
-    XLSX.writeFile(wb, 'pig-weights-' + slugify(sessionSite) + '-' + dateForFile + '.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, 'Weights');
+    XLSX.writeFile(wb, opts.filename);
+    return true;
+  }
+
+  exportBtn.addEventListener('click', () => {
+    if(entries.length === 0){ statusLine.textContent = 'No weights recorded yet.'; return; }
+    const rangeDisplay = EXPECTED_RANGE ? (EXPECTED_RANGE.min + '\u2013' + EXPECTED_RANGE.max + ' kg') : '';
+    const stats = computeStats();
+    const name = buildBatchName(dateInputField.value, sessionComment1);
+    downloadBatchWorkbook({
+      site: sessionSite, dateDisplay: sessionDateDisplay, rangeDisplay: rangeDisplay,
+      pctText: stats.pct === null ? '' : stats.pct + '% (target 80%)',
+      comment1: sessionComment1, comment2: sessionComment2, includeId: INCLUDE_ID,
+      entries: entries, filename: sanitizeFilename(name) + '.xlsx'
+    });
   });
 
-  // --- voice check flow ---
+  // ---------- saved batches list ----------
+  function exportBatchById(id){
+    const b = batches.find(b => b.id === id);
+    if(!b) return;
+    const rangeDisplay = b.range ? (b.range.min + '\u2013' + b.range.max + ' kg') : '';
+    const valid = b.entries.filter(e => e.weight !== null && !isNaN(e.weight));
+    const inRange = b.range ? valid.filter(e => e.weight >= b.range.min && e.weight <= b.range.max).length : 0;
+    const pct = valid.length ? Math.round(100 * inRange / valid.length) : null;
+    downloadBatchWorkbook({
+      site: b.site, dateDisplay: b.dateDisplay, rangeDisplay: rangeDisplay,
+      pctText: pct === null ? '' : pct + '% (target 80%)',
+      comment1: b.comment1, comment2: b.comment2, includeId: b.includeId,
+      entries: b.entries, filename: sanitizeFilename(b.name) + '.xlsx'
+    });
+  }
+  async function exportAllBatches(){
+    for(let i = 0; i < batches.length; i++){
+      exportBatchById(batches[i].id);
+      await new Promise(r => setTimeout(r, 400));
+    }
+  }
+  function renderBatchList(){
+    batchListBody.innerHTML = '';
+    if(batches.length === 0){
+      batchListBody.innerHTML = '<div class="empty-note">No saved batches yet.</div>';
+      return;
+    }
+    batches.forEach(b => {
+      const row = document.createElement('div');
+      row.className = 'batch-row';
+      row.innerHTML =
+        '<div class="batch-info">' +
+          '<div class="batch-name">' + b.name + '</div>' +
+          '<div class="batch-meta">' + (b.site || '') + ' \u00b7 ' + b.entries.length + ' head</div>' +
+        '</div>' +
+        '<button class="btn btn-ghost batch-export" data-id="' + b.id + '">Export</button>' +
+        '<button class="del batch-delete" data-id="' + b.id + '" aria-label="Delete batch">&#10005;</button>';
+      batchListBody.appendChild(row);
+    });
+    batchListBody.querySelectorAll('.batch-export').forEach(btn => {
+      btn.addEventListener('click', () => exportBatchById(btn.dataset.id));
+    });
+    batchListBody.querySelectorAll('.batch-delete').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if(confirm('Delete this saved batch? Make sure you\'ve already exported it.')){
+          batches = batches.filter(b => b.id !== btn.dataset.id);
+          saveBatches();
+          renderBatchList();
+        }
+      });
+    });
+  }
+  batchesBtn.addEventListener('click', () => { renderBatchList(); batchesOverlay.classList.remove('hidden'); });
+  closeBatchesBtn.addEventListener('click', () => batchesOverlay.classList.add('hidden'));
+  exportAllBatchesBtn.addEventListener('click', () => exportAllBatches());
+
+  // ---------- voice check flow ----------
   function updateCheckDots(){
     checkDots.forEach((dot, i) => {
       dot.classList.remove('done','current');
@@ -1110,17 +1015,15 @@
       else if(i === checkStep) dot.classList.add('current');
     });
   }
-
   function resetCheckStepUI(){
     checkConfirmRow.style.display = 'none';
-    checkReadoutValue.textContent = '—.—';
+    checkReadoutValue.textContent = '\u2014.\u2014';
     checkHeardLine.classList.remove('warn');
     checkHeardLine.textContent = 'Tap the mic and say a weight, e.g. "forty two kilos"';
     checkMicBtn.classList.remove('on');
     checkStepLabel.textContent = 'Step ' + (checkStep + 1) + ' of ' + CHECK_TOTAL;
     updateCheckDots();
   }
-
   function showCheckSuccess(){
     document.getElementById('checkMicRow').style.display = 'none';
     checkReadoutValue.parentElement.parentElement.style.display = 'none';
@@ -1128,7 +1031,6 @@
     checkConfirmRow.style.display = 'none';
     checkSuccessWrap.style.display = 'block';
   }
-
   function startCheckListening(){
     if(!SpeechRecognition || checkListening) return;
     const checkRecognition = new SpeechRecognition();
@@ -1149,14 +1051,12 @@
         const weight = parseWeight(finalText);
         if(weight === null || isNaN(weight)){
           checkHeardLine.classList.add('warn');
-          checkHeardLine.textContent = 'Couldn\'t catch a number in "' + finalText.trim() + '" — tap the mic and try again';
-          checkReadoutValue.textContent = '—.—';
+          checkHeardLine.textContent = 'Couldn\'t catch a number in "' + finalText.trim() + '" \u2014 tap the mic and try again';
+          checkReadoutValue.textContent = '\u2014.\u2014';
           checkMicBtn.classList.remove('on');
           checkListening = false;
         } else {
-          pendingCheckWeight = weight;
-          pendingCheckRaw = finalText.trim();
-          checkHeardText.textContent = 'Heard: "' + pendingCheckRaw + '" → parsed as ' + weight + ' kg. Is that right?';
+          checkHeardText.textContent = 'Heard: "' + finalText.trim() + '" \u2192 parsed as ' + weight + ' kg. Is that right?';
           checkConfirmRow.style.display = 'block';
           checkMicBtn.classList.remove('on');
           checkListening = false;
@@ -1165,41 +1065,37 @@
         checkHeardLine.classList.remove('warn');
         checkHeardLine.textContent = 'hearing: "' + interim.trim() + '"';
         const guess = parseWeight(interim);
-        checkReadoutValue.textContent = guess !== null ? guess : '—.—';
+        checkReadoutValue.textContent = guess !== null ? guess : '\u2014.\u2014';
       }
     };
-
     checkRecognition.onerror = (event) => {
       checkListening = false;
       checkMicBtn.classList.remove('on');
       if(event.error === 'not-allowed' || event.error === 'service-not-allowed'){
         checkHeardLine.classList.add('warn');
-        checkHeardLine.textContent = 'Microphone access blocked — allow it in your browser settings.';
+        checkHeardLine.textContent = 'Microphone access blocked \u2014 allow it in your browser settings.';
       } else if(event.error !== 'no-speech'){
         checkHeardLine.classList.add('warn');
-        checkHeardLine.textContent = 'Voice hiccup — tap the mic and try again.';
+        checkHeardLine.textContent = 'Voice hiccup \u2014 tap the mic and try again.';
       }
     };
-
     checkRecognition.onend = () => {
       checkListening = false;
       checkMicBtn.classList.remove('on');
       if(!gotFinal && checkConfirmRow.style.display === 'none'){
         checkHeardLine.classList.add('warn');
-        checkHeardLine.textContent = 'Didn\'t catch anything — tap the mic and try again';
-        checkReadoutValue.textContent = '—.—';
+        checkHeardLine.textContent = 'Didn\'t catch anything \u2014 tap the mic and try again';
+        checkReadoutValue.textContent = '\u2014.\u2014';
       }
     };
-
     try{
       checkRecognition.start();
       checkListening = true;
       checkMicBtn.classList.add('on');
       checkHeardLine.classList.remove('warn');
-      checkHeardLine.textContent = 'Listening…';
+      checkHeardLine.textContent = 'Listening\u2026';
     }catch(e){ /* ignore double-start */ }
   }
-
   function initCheck(){
     checkStep = 0;
     checkOverlay.classList.remove('hidden');
@@ -1218,63 +1114,138 @@
     checkSkipWrap.style.display = 'none';
     resetCheckStepUI();
   }
-
   checkMicBtn.addEventListener('click', () => startCheckListening());
   checkYesBtn.addEventListener('click', () => {
     checkStep++;
-    if(checkStep >= CHECK_TOTAL){
-      showCheckSuccess();
-    } else {
-      resetCheckStepUI();
-    }
+    if(checkStep >= CHECK_TOTAL) showCheckSuccess(); else resetCheckStepUI();
   });
-  checkNoBtn.addEventListener('click', () => {
-    resetCheckStepUI();
-  });
-  checkStartBtn.addEventListener('click', () => {
-    checkOverlay.classList.add('hidden');
-  });
-  checkSkipBtn.addEventListener('click', () => {
-    checkOverlay.classList.add('hidden');
-  });
-  redoCheckBtn.addEventListener('click', () => {
-    initCheck();
+  checkNoBtn.addEventListener('click', () => resetCheckStepUI());
+  checkStartBtn.addEventListener('click', () => checkOverlay.classList.add('hidden'));
+  checkSkipBtn.addEventListener('click', () => checkOverlay.classList.add('hidden'));
+  redoCheckBtn.addEventListener('click', () => initCheck());
+
+  // ---------- instructions overlay ----------
+  function openInstructions(){ instructionsOverlay.classList.remove('hidden'); }
+  function closeInstructions(){ instructionsOverlay.classList.add('hidden'); }
+  instructionsBtn.addEventListener('click', openInstructions);
+  instructionsBtn2.addEventListener('click', openInstructions);
+  closeInstructionsBtn.addEventListener('click', closeInstructions);
+
+  // ---------- generic tap-to-speak-or-type fields ----------
+  function listenIntoField(inputEl, opts){
+    opts = opts || {};
+    if(!SpeechRecognition || inputEl._activeRecognition) return;
+    const rec = new SpeechRecognition();
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.lang = 'en-AU';
+    inputEl._activeRecognition = rec;
+    inputEl.classList.add('field-listening');
+
+    rec.onresult = (event) => {
+      let finalText = '';
+      for(let i = event.resultIndex; i < event.results.length; i++){
+        if(event.results[i].isFinal) finalText += event.results[i][0].transcript;
+      }
+      if(finalText){
+        let value = finalText.trim();
+        if(opts.numeric){
+          const parsed = parseWeight(value);
+          value = (parsed !== null && !isNaN(parsed)) ? String(parsed) : value;
+        } else if(value){
+          value = value.charAt(0).toUpperCase() + value.slice(1);
+        }
+        inputEl.value = value;
+        inputEl.dispatchEvent(new Event('change'));
+      }
+    };
+    rec.onerror = () => {};
+    rec.onend = () => { inputEl.classList.remove('field-listening'); inputEl._activeRecognition = null; };
+    try{ rec.start(); }catch(e){ inputEl.classList.remove('field-listening'); inputEl._activeRecognition = null; }
+  }
+  [[rangeMinInput,true],[rangeMaxInput,true],[comment1Input,false],[comment2Input,false]].forEach(function(pair){
+    const el = pair[0], numeric = pair[1];
+    el.addEventListener('focus', () => {
+      if(el.value.trim() !== '') return;
+      listenIntoField(el, {numeric: numeric});
+    });
+    el.addEventListener('input', () => {
+      if(el._activeRecognition){ try{ el._activeRecognition.stop(); }catch(e){} el._activeRecognition = null; el.classList.remove('field-listening'); }
+    });
   });
 
-  // --- site dropdown (with persisted "add new site") ---
+  // ---------- Include Individual I.D. toggle ----------
+  idToggleButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      idToggleButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+  function getIdToggleValue(){
+    const active = document.querySelector('#idToggleRow .mode-btn.active');
+    return active ? active.dataset.val === 'yes' : false;
+  }
+  function setIdToggleValue(val){
+    idToggleButtons.forEach(b => b.classList.toggle('active', (b.dataset.val === 'yes') === !!val));
+  }
+
+  // ---------- site dropdown (with persisted "add new site") ----------
   function rebuildSiteOptions(preserveValue){
     const prev = preserveValue !== undefined ? preserveValue : siteSelect.value;
     const allSites = DEFAULT_SITES.concat(customSites);
     siteSelect.innerHTML = '';
     allSites.forEach(site => {
       const opt = document.createElement('option');
-      opt.value = site;
-      opt.textContent = site;
+      opt.value = site; opt.textContent = site;
       siteSelect.appendChild(opt);
     });
     const addOpt = document.createElement('option');
-    addOpt.value = '__add_new__';
-    addOpt.textContent = '+ Add new site…';
+    addOpt.value = '__add_new__'; addOpt.textContent = '+ Add new site\u2026';
     siteSelect.appendChild(addOpt);
     if(prev && allSites.includes(prev)) siteSelect.value = prev;
   }
   async function loadSites(){
     try{
-      if(window.storage && window.storage.get){
-        const res = await window.storage.get('pig-weigh-sites');
-        if(res && res.value) customSites = JSON.parse(res.value) || [];
-      }
+      const val = await storageGet('pig-weigh-sites');
+      if(val) customSites = JSON.parse(val) || [];
     }catch(e){ customSites = []; }
     rebuildSiteOptions();
   }
   async function saveSites(){
-    try{
-      if(window.storage && window.storage.set){
-        await window.storage.set('pig-weigh-sites', JSON.stringify(customSites), false);
-      }
-    }catch(e){ /* storage not available */ }
+    await storageSet('pig-weigh-sites', JSON.stringify(customSites));
   }
   rebuildSiteOptions();
+
+  // ---------- per-site settings persistence ----------
+  function applySiteSettingsToForm(settings){
+    rangeMinInput.value = (settings && settings.rangeMin !== undefined && settings.rangeMin !== null) ? settings.rangeMin : '';
+    rangeMaxInput.value = (settings && settings.rangeMax !== undefined && settings.rangeMax !== null) ? settings.rangeMax : '';
+    comment1Input.value = (settings && settings.comment1) ? settings.comment1 : '';
+    comment2Input.value = (settings && settings.comment2) ? settings.comment2 : '';
+    setIdToggleValue(!!(settings && settings.includeId));
+  }
+  async function loadSiteSettings(site){
+    if(!site){ applySiteSettingsToForm(null); return; }
+    try{
+      const val = await storageGet('farmtalk-site:' + site);
+      if(val){ applySiteSettingsToForm(JSON.parse(val)); return; }
+    }catch(e){}
+    applySiteSettingsToForm(null);
+  }
+  async function saveSiteSettings(site, settings){
+    await storageSet('farmtalk-site:' + site, JSON.stringify(settings));
+    await storageSet('farmtalk-last-site', site);
+  }
+  async function restoreLastSite(){
+    try{
+      const val = await storageGet('farmtalk-last-site');
+      if(val){
+        const allSites = DEFAULT_SITES.concat(customSites);
+        if(allSites.includes(val)) siteSelect.value = val;
+      }
+    }catch(e){}
+    loadSiteSettings(siteSelect.value === '__add_new__' ? null : siteSelect.value);
+  }
 
   siteSelect.addEventListener('change', () => {
     if(siteSelect.value === '__add_new__'){
@@ -1282,6 +1253,7 @@
       newSiteInput.focus();
     } else {
       addSiteRow.style.display = 'none';
+      loadSiteSettings(siteSelect.value);
     }
   });
   addSiteConfirmBtn.addEventListener('click', () => {
@@ -1294,15 +1266,22 @@
     rebuildSiteOptions(name);
     addSiteRow.style.display = 'none';
     newSiteInput.value = '';
+    loadSiteSettings(name);
   });
   newSiteInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') addSiteConfirmBtn.click(); });
 
-  // --- front screen flow ---
+  // ---------- front screen flow ----------
   function applyFrontDetails(){
     sessionSite = siteSelect.value === '__add_new__' ? '' : siteSelect.value;
     const d = dateInputField.value ? new Date(dateInputField.value + 'T00:00:00') : new Date();
     sessionDateDisplay = d.toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
-    dateLabel.textContent = (sessionSite ? sessionSite + ' · ' : '') + sessionDateDisplay;
+    dateLabel.textContent = (sessionSite ? sessionSite + ' \u00b7 ' : '') + sessionDateDisplay;
+
+    const noteParts = [];
+    if(sessionComment1) noteParts.push(sessionComment1);
+    if(sessionComment2) noteParts.push(sessionComment2);
+    if(noteParts.length){ sessionNoteEl.textContent = noteParts.join(' \u00b7 '); sessionNoteEl.style.display = ''; }
+    else { sessionNoteEl.style.display = 'none'; }
   }
 
   function showFrontScreen(){
@@ -1313,36 +1292,55 @@
     frontOverlay.classList.remove('hidden');
   }
 
-  rangePresetButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      rangePresetButtons.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    });
-  });
-
-  frontContinueBtn.addEventListener('click', () => {
+  function finalizeFrontScreen(){
     frontStatusLine.classList.remove('warn');
     if(siteSelect.value === '__add_new__'){
       frontStatusLine.textContent = 'Add the new site name, or pick an existing site.';
       frontStatusLine.classList.add('warn');
-      return;
+      return false;
     }
-    const activeBtn = document.querySelector('#rangePresets .mode-btn.active');
-    if(!activeBtn){
-      frontStatusLine.textContent = 'Pick an anticipated weight range.';
+    const mn = parseFloat(rangeMinInput.value);
+    const mx = parseFloat(rangeMaxInput.value);
+    if(isNaN(mn) || isNaN(mx) || mn >= mx){
+      frontStatusLine.textContent = 'Enter a valid weight range (min less than max) \u2014 tap a box and say or type the number.';
       frontStatusLine.classList.add('warn');
-      return;
+      return false;
     }
-    EXPECTED_RANGE = {min: parseFloat(activeBtn.dataset.min), max: parseFloat(activeBtn.dataset.max)};
-    sessionRangeLabel = activeBtn.dataset.label + ' ' + activeBtn.dataset.min + '–' + activeBtn.dataset.max + ' kg';
+    EXPECTED_RANGE = {min: mn, max: mx};
+    INCLUDE_ID = getIdToggleValue();
+    sessionComment1 = comment1Input.value.trim();
+    sessionComment2 = comment2Input.value.trim();
+
+    manualIdInput.style.display = INCLUDE_ID ? '' : 'none';
+    if(INCLUDE_ID){
+      mode = 'over';
+      modeOverBtn.classList.add('active');
+      modePauseBtn.classList.remove('active');
+      modePauseBtn.disabled = true;
+    } else {
+      modePauseBtn.disabled = false;
+    }
+    resetStage();
     applyFrontDetails();
+    saveSiteSettings(sessionSite, { rangeMin: mn, rangeMax: mx, includeId: INCLUDE_ID, comment1: sessionComment1, comment2: sessionComment2 });
+    return true;
+  }
+
+  continueCheckBtn.addEventListener('click', () => {
+    if(!finalizeFrontScreen()) return;
     frontOverlay.classList.add('hidden');
     initCheck();
+  });
+  skipCheckBtn.addEventListener('click', () => {
+    if(!finalizeFrontScreen()) return;
+    frontOverlay.classList.add('hidden');
+    checkOverlay.classList.add('hidden');
   });
 
   initRecognition();
   loadPersisted();
-  loadSites();
+  loadSites().then(restoreLastSite);
+  loadBatches();
 })();
 </script>
 </body>
